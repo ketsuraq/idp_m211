@@ -1,0 +1,1 @@
+# hardware initialization and management
