@@ -1,6 +1,8 @@
 # main launch and run file for the project
 
 from agv import AGV
+from hardware import create_hardware
+import constants
 
 '''
 state machine
@@ -47,10 +49,11 @@ logic for vehicle movement
 
 ''' 
 
+
 def main():
     agv = AGV(state="start")
+    hardware = create_hardware()
 
-    
 
 
 if __name__ == "__main__":
