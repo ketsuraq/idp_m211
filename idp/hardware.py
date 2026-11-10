@@ -1,5 +1,7 @@
 # hardware initialization and management
 # initialise actual hardware
+from machine import Pin
+from utime import sleep
 
 def create_hardware():
     left_motor = Motor(pin=1)
