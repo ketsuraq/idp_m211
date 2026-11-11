@@ -28,7 +28,7 @@ class Line:
         return self.sensor.value()
 
 class Hardware:
-    def __init__(self, motor1, motor2, motor3, motor4, line1, line2, line3, line4):
+    def __init__(self, motor1, motor2, line1, line2, line3, line4):
         self.motor1 = motor1
         self.motor2 = motor2
         self.line1 = line1
