@@ -31,8 +31,6 @@ class Hardware:
     def __init__(self, motor1, motor2, motor3, motor4, line1, line2, line3, line4):
         self.motor1 = motor1
         self.motor2 = motor2
-        self.motor3 = motor3
-        self.motor4 = motor4
         self.line1 = line1
         self.line2 = line2
         self.line3 = line3
@@ -42,8 +40,8 @@ class Hardware:
 def create_hardware():
     # Initialise actual hardware
     return Hardware(
-        motor3=Motor(4, 5),
-        motor4=Motor(6, 7),
+        motor1=Motor(4, 5),
+        motor2=Motor(6, 7),
         line1=Line(27),
         line2=Line(26),
         line3=Line(22),

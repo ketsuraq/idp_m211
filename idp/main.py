@@ -2,7 +2,9 @@
 
 from agv import AGV
 from hardware import create_hardware
-import constants
+from constants import *
+
+from utime import sleep
 
 '''
 state machine
@@ -52,8 +54,26 @@ logic for vehicle movement
 
 def main():
     agv = AGV(state="start")
-    hardware = create_hardware()
 
+    agv.forward(speed=FORWARD_SPEED)
+    sleep(2)
+    agv.stop()
+    sleep(1)
+
+    agv.backward(speed=BACKWARD_SPEED)
+    sleep(2)
+    agv.stop()
+    sleep(1)
+
+    agv.turn(direction="left", speed=TURN_SPEED)
+    sleep(2)
+    agv.stop()
+    sleep(1)
+    agv.turn(direction="right", speed=TURN_SPEED)
+    sleep(2)
+    agv.stop()
+    sleep(1)
+    
 
 
 if __name__ == "__main__":
