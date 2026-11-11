@@ -1,23 +1,34 @@
-# agv class
-# declare methods for movement given paramenters
+from hardware import create_hardware
 
 class AGV:
 
-    def __init__ (self, state):
+    def __init__(self, state):
         self.state = state
+        self.hw = create_hardware()
 
-    def forward(self):
-        pass
+    def forward(self, speed=100):
+        self.hw.motor1.Forward(speed)
+        self.hw.motor2.Forward(speed)
 
-    def turn(self, direction):
-        pass
+    def turn(self, direction, speed=30):
+        if direction == "left":
+            self.hw.motor1.Reverse(speed)
+            self.hw.motor2.Forward(speed)
 
-    def backward(self):
-        pass
+        elif direction == "right":
+            self.hw.motor1.Forward(speed)
+            self.hw.motor2.Reverse(speed)
+
+    def backward(self, speed=50):
+        self.hw.motor1.Reverse(speed)
+        self.hw.motor2.Reverse(speed)
+
+    def stop(self):
+        self.hw.motor1.off()
+        self.hw.motor2.off()
 
     def read_line_sensor(self):
         pass
-        # returns detected object (line, corner, T-shape, X-shape, etc.)
 
     def read_magnet_sensor(self):
         pass
