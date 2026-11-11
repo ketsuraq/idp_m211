@@ -41,7 +41,7 @@ def create_hardware():
     # Initialise actual hardware
     return Hardware(
         motor1=Motor(4, 5),
-        motor2=Motor(6, 7),
+        motor2=Motor(0, 1),
         line1=Line(27),
         line2=Line(26),
         line3=Line(22),

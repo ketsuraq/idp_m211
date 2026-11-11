@@ -8,20 +8,20 @@ class AGV:
 
     def forward(self, speed=100):
         self.hw.motor1.Forward(speed)
-        self.hw.motor2.Forward(speed)
+        self.hw.motor2.Reverse(speed)
 
     def turn(self, direction, speed=30):
         if direction == "left":
-            self.hw.motor1.Reverse(speed)
+            self.hw.motor1.Forward(speed)
             self.hw.motor2.Forward(speed)
 
         elif direction == "right":
-            self.hw.motor1.Forward(speed)
+            self.hw.motor1.Reverse(speed)
             self.hw.motor2.Reverse(speed)
 
     def backward(self, speed=50):
         self.hw.motor1.Reverse(speed)
-        self.hw.motor2.Reverse(speed)
+        self.hw.motor2.Forward(speed)
 
     def stop(self):
         self.hw.motor1.off()
