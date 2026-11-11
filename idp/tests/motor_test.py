@@ -1,8 +1,8 @@
 from machine import Pin
 from utime import sleep
 
-m1_dir1 = Pin(1, Pin.OUT)
-m1_pwm1 = Pin(2, Pin.OUT)
+m1_dir1 = Pin(0, Pin.OUT)
+m1_pwm1 = Pin(1, Pin.OUT)
 m1_dir2 = Pin(4, Pin.OUT)
 m1_pwm2 = Pin(5, Pin.OUT)
 
