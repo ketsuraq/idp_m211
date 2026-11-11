@@ -1,5 +1,6 @@
 # Hardware initialization and management
 from machine import Pin, PWM
+from constants import *
 
 
 class Motor:
@@ -14,12 +15,12 @@ class Motor:
         """Turn off the motor by setting its PWM duty cycle to 0."""
         self.pwm.duty_u16(0)
 
-    def Forward(self, speed:float =100):
+    def Forward(self, speed=FORWARD_SPEED):
         """Drive the motor forward at ``speed`` percent."""
         self.mDir.value(0)
         self.pwm.duty_u16(int(65535 * speed / 100))
 
-    def Reverse(self, speed:float=30):
+    def Reverse(self, speed=FORWARD_SPEED):
         """Drive the motor backward at ``speed`` percent."""
         self.mDir.value(1)
         self.pwm.duty_u16(int(65535 * speed / 100))
