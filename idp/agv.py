@@ -11,7 +11,7 @@ class AGV:
     def __init__(self, state=None):
         """Create the hardware interface and use a fresh state when none is given."""
         if state is None:
-            state = RobotState()
+            state = RobotState() # currently doesn't wrok
 
         self.state = state
         self.hw = create_hardware()
