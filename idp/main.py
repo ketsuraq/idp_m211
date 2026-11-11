@@ -1,59 +1,14 @@
-# main launch and run file for the project
+"""Launch the AGV and run the current motor-control demonstration."""
 
 from agv import AGV
-from hardware import create_hardware
-from constants import *
+from constants import BACKWARD_SPEED, FORWARD_SPEED, TURN_SPEED
 
 from utime import sleep
 
-'''
-state machine
-
-(1) pick-up <--> (2) delivery
-(differentiate between left and right, top and bottom)
-
-task workflow
-- retrieve bottom left box
-- check magnet polarity
-- deliver box to location depending on magnet polarity
-- retrieve bottom right box
-- check magnet polarity
-- deliver box to location depending on magnet polarity
-- retrieve top left box
-- check magnet polarity
-- deliver box to location depending on magnet polarity
-- retrieve top right box
-- check magnet polarity
-- deliver box to location depending on magnet polarity
-
-parallel tasks
-- led flashing depending on operation state
-- line sensor reading 
-
-potential states for map
-- bottom left
-- delivery left
-- bottom right
-- delivery right
-- top left
-- top right
-- start box
-
-logic for vehicle movement
-- start by going to bottom left rack ('pick-up'state)
-- sense right corner, enter 'bottom left' map state
-- count 2 right turns, on the third turn go right
-- go until the end of the line, check vacancy eith hall sensor
-- if vancant, turn around, double right to check next spot (all 6 spots)
-- in all cases, drive until the end of the line and detect T shape
-- when box is picked up, check polarity, enter 'delivery' state and set target (left/right station)
-- deliver box to target, meanwhile changing game states and begin next pick-up
-
-''' 
-
 
 def main():
-    agv = AGV(state="start")
+    """Run a short manual motion test using an AGV with its initial RobotState."""
+    agv = AGV()
 
     agv.forward(speed=FORWARD_SPEED)
     sleep(2)
