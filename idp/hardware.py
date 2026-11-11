@@ -20,6 +20,12 @@ class Motor:
         self.mDir.value(1)
         self.pwm.duty_u16(int(65535 * speed / 100))
 
+class Line:
+    def __init__(self, digitalPin):
+        self.sensor = Pin(digitalPin, Pin.IN)
+    
+    def get_value(self):
+        return self.sensor.value()
 
 class Hardware:
     def __init__(self, motor1, motor2, motor3, motor4):
