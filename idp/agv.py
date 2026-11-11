@@ -41,9 +41,18 @@ class AGV:
         self.hw.motor1.off()
         self.hw.motor2.off()
 
-    def read_line_sensor(self):
-        """Return line-sensor readings once their combined interpretation is implemented."""
-        pass
+    def read_line_sensor(self, identifier: int):
+        """Return line-sensor readings based on which line sensor is inputted"""
+        if identifier == 1:
+            return self.hw.line1.get_value()
+        elif identifier == 2:
+            return self.hw.line2.get_value()
+        elif identifier == 3:
+            return self.hw.line3.get_value()
+        elif identifier == 4:
+            return self.hw.line4.get_value()
+        else:
+            raise ValueError("Invalid line sensor identifier")
 
     def read_magnet_sensor(self):
         """Return the detected box polarity once the magnetic sensor is connected."""
