@@ -1,50 +1,42 @@
-"""Hardware initialisation and low-level interfaces for the AGV."""
-
+# Hardware initialization and management
 from machine import Pin, PWM
 
 
 class Motor:
-    """Control one DC motor using a direction pin and a PWM speed pin."""
-
-    def __init__(self, dirPin, PWMPin):
-        """Configure the direction and PWM pins for one motor."""
+    def __init__(self, dirPin: int, PWMPin: int):
+        """Create a motor controller with a direction pin and a PWM pin."""
         self.mDir = Pin(dirPin, Pin.OUT)
         self.pwm = PWM(Pin(PWMPin))
         self.pwm.freq(1000)
         self.pwm.duty_u16(0)
 
     def off(self):
-        """Stop the motor by setting its PWM duty cycle to zero."""
+        """Turn off the motor by setting its PWM duty cycle to 0."""
         self.pwm.duty_u16(0)
 
-    def Forward(self, speed=100):
-        """Rotate the motor forwards at ``speed`` percent."""
+    def Forward(self, speed:float =100):
+        """Drive the motor forward at ``speed`` percent."""
         self.mDir.value(0)
         self.pwm.duty_u16(int(65535 * speed / 100))
 
-    def Reverse(self, speed=30):
-        """Rotate the motor backwards at ``speed`` percent."""
+    def Reverse(self, speed:float=30):
+        """Drive the motor backward at ``speed`` percent."""
         self.mDir.value(1)
         self.pwm.duty_u16(int(65535 * speed / 100))
 
-
 class Line:
-    """Read one digital line sensor."""
-
-    def __init__(self, digitalPin):
-        """Configure ``digitalPin`` as the input for this line sensor."""
+    def __init__(self, digitalPin: int, identifier: int):
+        """Create a line sensor with a digital input pin and an identifier."""
         self.sensor = Pin(digitalPin, Pin.IN)
+        self.identifier = identifier
     
     def get_value(self):
-        """Return the current digital reading from the line sensor."""
+        """Return the current digital value of the line sensor."""
         return self.sensor.value()
 
-
 class Hardware:
-    """Group the motor and line-sensor objects used by the AGV."""
-
-    def __init__(self, motor1, motor2, line1, line2, line3, line4):
-        """Store the already-configured hardware component objects."""
+    def __init__(self, motor1: Motor, motor2: Motor, motor3: Motor, motor4: Motor, line1: Line, line2: Line, line3: Line, line4: Line):
+        """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
         self.line1 = line1
@@ -54,12 +46,12 @@ class Hardware:
 
 
 def create_hardware():
-    """Create the hardware objects using the AGV's physical pin assignments."""
+    """Return a Hardware object with the AGV's motors and sensors."""
     return Hardware(
         motor1=Motor(4, 5),
-        motor2=Motor(0, 1),
-        line1=Line(27),
-        line2=Line(26),
-        line3=Line(22),
-        line4=Line(21)
+        motor2=Motor(6, 7),
+        line1=Line(27, 1),
+        line2=Line(26, 2),
+        line3=Line(22, 3),
+        line4=Line(21, 4)
     )
