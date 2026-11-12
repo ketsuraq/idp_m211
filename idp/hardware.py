@@ -50,9 +50,9 @@ def create_hardware():
     """Return a Hardware object with the AGV's motors and sensors."""
     return Hardware(
         motor1=Motor(4, 5),
-        motor2=Motor(6, 7),
-        line1=Line(27, 1),
-        line2=Line(26, 2),
-        line3=Line(22, 3),
-        line4=Line(21, 4)
+        motor2=Motor(7, 6), #Second set of pins are reversed!!!
+        line1=Line(27, 1), #Pin 32
+        line2=Line(26, 2), #Pin 31
+        line3=Line(21, 3), #Pin 27
+        line4=Line(20, 4) #Pin 26
     )

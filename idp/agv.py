@@ -19,33 +19,33 @@ class AGV:
     def forward(self, speed=FORWARD_SPEED):
         """Drive both motors forward at ``speed`` percent."""
         self.hw.motor1.Forward(speed)
-        self.hw.motor2.Reverse(speed)
+        self.hw.motor2.Forward(speed)
 
     def turn(self, direction, speed=TURN_SPEED):
         """Turn in the requested ``left`` or ``right`` direction at ``speed`` percent."""
         if direction == "left":
-            self.hw.motor1.Forward(speed)
+            self.hw.motor1.Reverse(speed)
             self.hw.motor2.Forward(speed)
 
         elif direction == "right":
-            self.hw.motor1.Reverse(speed)
+            self.hw.motor1.Forward(speed)
             self.hw.motor2.Reverse(speed)
 
     def correct(self, direction, speed=FORWARD_SPEED):
         # goes to the left
         if direction == "left":
-            self.hw.motor1.Forward(speed-CORRECTION_DIFF)
-            self.hw.motor2.Reverse(speed)
+            self.hw.motor1.Reverse(speed-CORRECTION_DIFF)
+            self.hw.motor2.Forward(speed)
 
         # goes to the right
         elif direction == "right":
-            self.hw.motor1.Forward(speed)
-            self.hw.motor2.Reverse(speed-CORRECTION_DIFF)
+            self.hw.motor1.Reverse(speed)
+            self.hw.motor2.Forward(speed-CORRECTION_DIFF)
 
     def backward(self, speed=BACKWARD_SPEED):
         """Drive both motors backwards at ``speed`` percent."""
         self.hw.motor1.Reverse(speed)
-        self.hw.motor2.Forward(speed)
+        self.hw.motor2.Reverse(speed)
 
     def stop(self):
         """Stop both drive motors."""
