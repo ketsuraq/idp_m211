@@ -36,7 +36,7 @@ class Line:
         return self.sensor.value()
 
 class Hardware:
-    def __init__(self, motor1: Motor, motor2: Motor, motor3: Motor, motor4: Motor, line1: Line, line2: Line, line3: Line, line4: Line):
+    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line):
         """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
