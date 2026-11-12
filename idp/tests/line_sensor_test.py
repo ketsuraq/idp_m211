@@ -22,7 +22,7 @@ from time import sleep_ms
 
 
 # Pico GPIO numbers, not physical pin numbers.
-SENSOR_PINS = (28)  # Use (2,) if testing only one sensor.
+SENSOR_PINS = (21, 22, 26, 27)  # Use (2,) if testing only one sensor.
 LINE_IS_LOW = True
 SAMPLE_PERIOD_MS = 200
 

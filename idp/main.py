@@ -9,13 +9,21 @@ def timed_turn(agv, direction):
     sleep(TURN_TIME)
     agv.stop()
 
-
+def continuous_turn(agv, direction):
+    agv.stop()
+    agv.turn(direction, TURN_SPEED)
+    sleep(TURN_TIME)
+    while agv.identify_config(agv.read_line_sensor()) != "line":
+        print(agv.read_line_sensor())
+        continue
+    agv.stop()
+    
 def main():
     agv = AGV()
     junction_active = False
 
     # 1. Initial left turn
-    timed_turn(agv, "left")
+    continuous_turn(agv, "left")
     agv.state.phase = "to_corner"
 
     while True:
@@ -32,7 +40,7 @@ def main():
             action = agv.state.handle_junction(config)
 
             if action in ("left", "right"):
-                timed_turn(agv, action)
+                continuous_turn(agv, action)
 
             elif action == "stop":
                 print("Unexpected junction")
