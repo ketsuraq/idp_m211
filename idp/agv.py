@@ -69,6 +69,11 @@ class AGV:
             self.hw.line4.get_value()
         ]
 
+    def centred_on_line(self):
+        """Check only the two middle line sensors."""
+        readings = self.read_line_sensor()
+        return readings[1] == 1 and readings[2] == 1
+
     def identify_config(self, line_readings):
         if line_readings == [0, 1, 1, 0]:
             return "line"

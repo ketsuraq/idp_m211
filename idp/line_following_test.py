@@ -105,22 +105,24 @@ def reverse_to_main_line(agv):
 
 
 def pivot_to_line(agv, direction):
-    """Turn after reversing: no CORNER_LATENCY, short blind turn, then until both middle
-    sensors are on the line."""
     if REVERSE_FORWARD_TIME:
         agv.forward(FORWARD_SPEED)
         sleep(REVERSE_FORWARD_TIME)
+
     agv.turn(direction, TURN_SPEED)
     sleep(REVERSE_TURN_TIME)
+
     start = ticks_ms()
-    while True:
-        r = agv.read_line_sensor()
-        if r[1] and r[2]:
-            break
-        if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
-            agv.stop()
-            raise RuntimeError("pivot " + direction + " never found the line")
-    agv.stop()
+
+    try:
+        while not agv.centred_on_line():
+            if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
+                raise RuntimeError("Pivot timeout")
+
+            sleep_ms(10)
+
+    finally:
+        agv.stop()
 
 
 def stop_in_box(agv):
@@ -147,7 +149,17 @@ def run(agv, mission):
     just_reversed = False
 
     # Robot starts in the lower half of the box: drive straight onto the long line (the start T)
-    seen = drive_to_junction(agv, lambda: agv.forward(FORWARD_SPEED))
+    start_time = ticks_ms()
+
+    while ticks_diff(ticks_ms(), start_time) < 2000:
+        agv.follow_line(FORWARD_SPEED)
+        sleep_ms(10)
+
+    # Now start looking for junctions
+    seen = drive_to_junction(
+        agv,
+        lambda: agv.follow_line(FORWARD_SPEED)
+    )
     action = mission.on_junction(seen)
 
     while True:
