@@ -1,39 +1,79 @@
 
 from agv import AGV
 from constants import *
-from utime import sleep, sleep_ms
+from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
-def timed_turn(agv, direction):
-    agv.stop()
+JUNCTIONS = {"left turn": "left", "right turn": "right"}
+TURN_TIMEOUT_MS = 5000  # give up if the turn never finds the new line
+
+
+def wait_for_junction(agv):
+    """Line follow until a left/right junction is seen twice in a row; return its direction."""
+    last = None
+    while True:
+        config = agv.follow_line(FORWARD_SPEED)
+
+        if config in JUNCTIONS and config == last:
+            return JUNCTIONS[config]
+
+        if config == "parallel":
+            raise RuntimeError("T-junction: direction is ambiguous")
+        if config == "line lost":
+            raise RuntimeError("Line lost before reaching a junction")
+
+        last = config
+        sleep_ms(10)
+
+
+def turn_at_junction(agv, direction):
+    """Drive forward so the wheels reach the junction, then pivot onto the new line."""
+    # 1. Walk forward to put the wheel axle over the junction
+    agv.forward(FORWARD_SPEED)
+    sleep(CORNER_LATENCY)
+
+    # 2. Blind turn to get the sensors off the old line
     agv.turn(direction, TURN_SPEED)
     sleep(TURN_TIME)
+
+    # 3. Keep turning until either middle sensor finds the new line
+    start = ticks_ms()
+    while True:
+        readings = agv.read_line_sensor()
+        if readings[1] and readings[2]:
+            break
+        if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
+            raise RuntimeError("Turn timed out without finding the line")
     agv.stop()
 
-def continuous_turn(agv, direction):
-    agv.stop()
-    agv.turn(direction, TURN_SPEED)
-    sleep(TURN_TIME)
-    while agv.identify_config(agv.read_line_sensor()) != "line":
-        #print(agv.read_line_sensor())
-        pass
-    agv.stop()
-    return
-    
+
+def follow_until_end(agv):
+    """Line follow (self-correcting) until the line is lost or another junction appears."""
+    while True:
+        config = agv.follow_line(FORWARD_SPEED)
+        if config in ("line lost", "parallel") or config in JUNCTIONS:
+            print("Stopping at:", config)
+            return
+        sleep_ms(10)
+
+
 def main():
+    agv = AGV()
     try:
-        agv = AGV()
-        junction_active = False
+        direction = wait_for_junction(agv)
+        print("Junction found, turning", direction)
 
-        # 1. Initial left turn
-        continuous_turn(agv, "right")
-        agv.state.phase = "to_corner"
+        turn_at_junction(agv, direction)
+        print("Turn done, following line")
 
-        while True:
-            agv.follow_line()
-    except:
+        follow_until_end(agv)
+    except KeyboardInterrupt:
+        print("Ctrl-C")
+        agv.stop()
+    except Exception as e:
+        print("Error:", e)
+    finally:
         agv.stop()
 
 
 if __name__ == "__main__":
     main()
-
