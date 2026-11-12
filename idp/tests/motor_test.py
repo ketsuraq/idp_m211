@@ -1,43 +1,82 @@
-from machine import Pin, PWM
-from utime import sleep
 
-class Motor:
-    def __init__(self, dirPin, PWMPin):
-        self.mDir = Pin(dirPin, Pin.OUT)  # set motor direction pin
-        self.pwm = PWM(Pin(PWMPin))  # set motor pwm pin
-        self.pwm.freq(1000)  # set PWM frequency
-        self.pwm.duty_u16(0)  # set duty cycle - 0=off
-        
-    def off(self):
-        self.pwm.duty_u16(0)
-        
-    def Forward(self, speed=100):
-        self.mDir.value(0)                     # forward = 0 reverse = 1 motor
-        self.pwm.duty_u16(int(65535 * speed / 100))  # speed range 0-100 motor
+from agv import AGV
+from constants import *
+from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
-    def Reverse(self, speed=30):
-        self.mDir.value(1)
-        self.pwm.duty_u16(int(65535 * speed / 100))
+JUNCTIONS = {"left turn": "left", "right turn": "right"}
+TURN_TIMEOUT_MS = 5000  # give up if the turn never finds the new line
 
 
-def test_motor3():
-    motor3 = Motor(dirPin=4, PWMPin=5)  # Motor 3 is controlled from Motor Driv2 #1, which is on GP4/5
-    motor4 = Motor(dirPin=7, PWMPin=6)
-
+def wait_for_junction(agv):
+    """Line follow until a left/right junction is seen twice in a row; return its direction."""
+    last = None
     while True:
-        print("Forward")
-        motor3.Forward()
-        motor4.Forward()
-        sleep(1)
-        print("Reverse")
-        motor3.Reverse()
-        motor4.Reverse()
-        sleep(1)
+        config = agv.follow_line(FORWARD_SPEED)
+
+        if config in JUNCTIONS and config == last:
+            return JUNCTIONS[config]
+
+        if config == "parallel":
+            raise RuntimeError("T-junction: direction is ambiguous")
+        if config == "line lost":
+            raise RuntimeError("Line lost before reaching a junction")
+
+        last = config
+        sleep_ms(10)
+
+
+def turn_at_junction(agv, direction):
+    """Drive forward so the wheels reach the junction, then pivot onto the new line."""
+    # 1. Walk forward to put the wheel axle over the junction
+    agv.forward(FORWARD_SPEED)
+    sleep(CORNER_LATENCY)
+
+    # 2. Blind turn to get the sensors off the old line
+    agv.turn(direction, TURN_SPEED)
+    sleep(TURN_TIME)
+
+    # 3. Keep turning until either middle sensor finds the new line
+    start = ticks_ms()
+    while True:
+        readings = agv.read_line_sensor()
+        if readings[1] and readings[2]:
+            sleep_ms(200)
+            break
+        if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
+            raise RuntimeError("Turn timed out without finding the line")
+    agv.stop()
+    return
+
+
+def follow_until_end(agv):
+    """Line follow (self-correcting) until the line is lost or another junction appears."""
+    while True:
+        config = agv.follow_line(FORWARD_SPEED)
+        if config in ("line lost", "parallel") or config in JUNCTIONS:
+            print("Stopping at:", config)
+            return
+        sleep_ms(10)
+
+
+def main():
+    agv = AGV()
+    try:
+        direction = wait_for_junction(agv)
+        print("Junction found, turning", direction)
+
+        turn_at_junction(agv, direction)
+        print("Turn done, following line")
+
+        follow_until_end(agv)
+    except KeyboardInterrupt:
+        print("Ctrl-C")
+        agv.stop()
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        agv.stop()
 
 
 if __name__ == "__main__":
-    try:
-        test_motor3()
-    except:
-        motor3.pwm.duty_u16(0)
-        motor4.pwm.duty_u16(0)
+    main()
+
