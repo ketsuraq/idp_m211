@@ -88,12 +88,12 @@ North-pole boxes go to the red (left) upper depot, south-pole to the green (righ
 | `agv.py` | Motors and sensors: `follow_line`, `reverse_follow_line`, turning. |
 | `line_following_test.py` | Drives the first full test (start → right pickup 3 → upper green depot → start) by asking `Mission` what to do. |
 | `main_test.py` | The tested junction turn (`turn_at_junction`), reused above. |
-| `tests/reverse_test.py` | Reversing out of a branch on its own, for tuning. |
+| `pickup3_test.py` | Same route, but starting on the main line just past `right_depot_2` facing N. |
 | `tests/route_test.py` | Laptop check of the map and routes. |
 
-## 7. Reversing out of a branch
+## 7. Leaving a branch: turn around, don't reverse
 
-The robot reverses with line following (steering flipped, as the sensors are at the front) until the sensors hit the main line, then pivots towards the next target. Constants: `BACKWARD_SPEED`, `REVERSE_TURN_TIME`, `REVERSE_FORWARD_TIME`.
+Reversing out of a branch didn't work (the sensors trail behind the wheels when reversing, so corrections made it worse). Instead the robot backs up briefly, spins round and drives out forwards. Full details, tuning and caveats: [turnaround_test.md](turnaround_test.md).
 
 ## 8. Adding the ramp
 

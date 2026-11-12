@@ -4,8 +4,9 @@ from constants import *
 
 
 class Motor:
-    def __init__(self, dirPin: int, PWMPin: int):
+    def __init__(self, dirPin: int, PWMPin: int, multiplier=1.0):
         """Create a motor controller with a direction pin and a PWM pin."""
+        self.multiplier = multiplier   # scales every speed sent to this motor
         self.mDir = Pin(dirPin, Pin.OUT)
         self.pwm = PWM(Pin(PWMPin))
         self.pwm.freq(1000)
@@ -18,12 +19,12 @@ class Motor:
     def Forward(self, speed=FORWARD_SPEED):
         """Drive the motor forward at ``speed`` percent."""
         self.mDir.value(0)
-        self.pwm.duty_u16(int(65535 * speed / 100))
+        self.pwm.duty_u16(int(65535 * min(100, speed * self.multiplier) / 100))
 
     def Reverse(self, speed=FORWARD_SPEED):
         """Drive the motor backward at ``speed`` percent."""
         self.mDir.value(1)
-        self.pwm.duty_u16(int(65535 * speed / 100))
+        self.pwm.duty_u16(int(65535 * min(100, speed * self.multiplier) / 100))
 
 class Line:
     def __init__(self, digitalPin: int, identifier: int):
@@ -49,7 +50,7 @@ class Hardware:
 def create_hardware():
     """Return a Hardware object with the AGV's motors and sensors."""
     return Hardware(
-        motor1=Motor(4, 5),
+        motor1=Motor(4, 5, LEFT_SPEED_MULTIPLIER),   # left wheel
         motor2=Motor(7, 6), #Second set of pins are reversed!!!
         line1=Line(27, 1), #Pin 32
         line2=Line(26, 2), #Pin 31

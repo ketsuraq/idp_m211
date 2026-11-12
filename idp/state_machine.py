@@ -9,6 +9,7 @@ Compass convention (stand at the start box facing the ramp):
 """
 
 DIRS = ["N", "E", "S", "W"]          # clockwise
+OPPOSITE = {"N": "S", "S": "N", "E": "W", "W": "E"}
 STOP_ON_MISMATCH = True              # testing: stop if a junction doesn't look like the map says
 
 # ---------------------------------------------------------------------------

@@ -4,7 +4,6 @@ from constants import *
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
 JUNCTIONS = {"left turn": "left", "right turn": "right"}
-TURN_TIMEOUT_MS = 5000  # give up if the turn never finds the new line
 
 
 def wait_for_junction(agv):
@@ -25,11 +24,15 @@ def wait_for_junction(agv):
         sleep_ms(10)
 
 
-def turn_at_junction(agv, direction):
+def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
     """Drive forward so the wheels reach the junction, then pivot onto the new line."""
-    # 1. Walk forward to put the wheel axle over the junction
+    # 1. Walk forward (line following) to put the wheel axle over the junction.
+    # Where there's no line ahead, follow_line keeps the last command, so start going straight.
     agv.forward(FORWARD_SPEED)
-    sleep(CORNER_LATENCY)
+    start = ticks_ms()
+    while ticks_diff(ticks_ms(), start) < latency * 1000:
+        agv.follow_line(FORWARD_SPEED)
+        sleep_ms(10)
 
     # 2. Blind turn to get the sensors off the old line
     agv.turn(direction, TURN_SPEED)
