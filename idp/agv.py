@@ -1,20 +1,15 @@
 """High-level movement and sensor interface for the automated guided vehicle."""
 
 from hardware import create_hardware
-from state_machine import RobotState
 from constants import *
 from utime import sleep_ms
 
 
 class AGV:
-    """Control the AGV's motors, sensors, and current navigation state."""
+    """Control the AGV's motors and sensors. Navigation decisions live in state_machine.Mission."""
 
-    def __init__(self, state=None):
-        """Create the hardware interface and use a fresh state when none is given."""
-        if state is None:
-            state = RobotState() # currently doesn't wrok
-
-        self.state = state
+    def __init__(self):
+        """Create the hardware interface."""
         self.hw = create_hardware()
 
     def forward(self, speed=FORWARD_SPEED):
@@ -47,6 +42,17 @@ class AGV:
         """Drive both motors backwards at ``speed`` percent."""
         self.hw.motor1.Reverse(speed)
         self.hw.motor2.Reverse(speed)
+
+    def reverse_correct(self, direction, speed=BACKWARD_SPEED):
+        """While reversing, swing the front (where the sensors are) to ``direction``.
+        Front swings left when the left wheel reverses faster than the right."""
+        if direction == "left":
+            self.hw.motor1.Reverse(speed+CORRECTION_DIFF)
+            self.hw.motor2.Reverse(speed)
+
+        elif direction == "right":
+            self.hw.motor1.Reverse(speed)
+            self.hw.motor2.Reverse(speed+CORRECTION_DIFF)
 
     def stop(self):
         """Stop both drive motors."""
@@ -94,6 +100,25 @@ class AGV:
 
         elif config == "right correction":
             self.correct("right", speed)
+            sleep_ms(100)
+
+        return config
+
+    def reverse_follow_line(self, speed=BACKWARD_SPEED):
+        """Same as follow_line, but driving backwards. The sensors are at the front, so a
+        line under the left sensor still means "swing the front left"."""
+        readings = self.read_line_sensor()
+        config = self.identify_config(readings)
+
+        if config == "line":
+            self.backward(speed)
+
+        elif config == "left correction":
+            self.reverse_correct("left", speed)
+            sleep_ms(100)
+
+        elif config == "right correction":
+            self.reverse_correct("right", speed)
             sleep_ms(100)
 
         return config
