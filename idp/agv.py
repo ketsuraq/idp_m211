@@ -3,6 +3,7 @@
 from hardware import create_hardware
 from state_machine import RobotState
 from constants import *
+from utime import sleep_ms
 
 
 class AGV:
@@ -34,13 +35,13 @@ class AGV:
     def correct(self, direction, speed=FORWARD_SPEED):
         # goes to the left
         if direction == "left":
-            self.hw.motor1.Reverse(speed-CORRECTION_DIFF)
-            self.hw.motor2.Forward(speed)
+            self.hw.motor1.Forward(speed)
+            self.hw.motor2.Forward(speed+CORRECTION_DIFF)
 
         # goes to the right
         elif direction == "right":
-            self.hw.motor1.Reverse(speed)
-            self.hw.motor2.Forward(speed-CORRECTION_DIFF)
+            self.hw.motor1.Forward(speed+CORRECTION_DIFF)
+            self.hw.motor2.Forward(speed)
 
     def backward(self, speed=BACKWARD_SPEED):
         """Drive both motors backwards at ``speed`` percent."""
@@ -89,9 +90,11 @@ class AGV:
 
         elif config == "left correction":
             self.correct("left", speed)
+            sleep_ms(100)
 
         elif config == "right correction":
             self.correct("right", speed)
+            sleep_ms(100)
 
         return config
 
@@ -106,3 +109,4 @@ class AGV:
     def read_ir_sensor(self):
         """Return the IR traffic-light signal once that sensor is connected."""
         pass
+

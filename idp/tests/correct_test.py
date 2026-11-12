@@ -3,7 +3,7 @@ from agv import AGV
 from constants import *
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
-test_speed = 100
+test_speed = 50
 max_run_ms = 10000
 
 
@@ -38,5 +38,6 @@ except KeyboardInterrupt:
 finally:
     agv.stop()
     print("Stopped. reason:", reason)
+
 
 

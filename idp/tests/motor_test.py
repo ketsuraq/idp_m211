@@ -21,8 +21,8 @@ class Motor:
 
 
 def test_motor3():
-    motor3 = Motor(dirPin=6, PWMPin=7)  # Motor 3 is controlled from Motor Driv2 #1, which is on GP4/5
-    motor4 = Motor(dirPin=8, PWMPin=9)
+    motor3 = Motor(dirPin=4, PWMPin=5)  # Motor 3 is controlled from Motor Driv2 #1, which is on GP4/5
+    motor4 = Motor(dirPin=7, PWMPin=6)
 
     while True:
         print("Forward")
@@ -36,4 +36,8 @@ def test_motor3():
 
 
 if __name__ == "__main__":
-    test_motor3()
+    try:
+        test_motor3()
+    except:
+        motor3.pwm.duty_u16(0)
+        motor4.pwm.duty_u16(0)
