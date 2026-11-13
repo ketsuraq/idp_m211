@@ -196,19 +196,32 @@ class Mission:
             raise MissionError("line ended, but %s is not a dead end" % node)
         return "collect" if self.state == "TO_PICKUP" else "drop"
 
-    def on_job_done(self, polarity=None):
-        if self.state == "TO_PICKUP":      # just collected
+    def on_job_done(self, polarity=None, box_found=True):
+        if self.state == "TO_PICKUP":
             self.pickups.pop(0)
-            self.polarity = polarity
-            if self.deliver:
-                self._go_to(DEPOT_FOR.get(polarity, FALLBACK_DEPOT), "TO_DEPOT")
+
+            if box_found:
+                # Box collected, navigate to depot
+                self.polarity = polarity
+                self._go_to(
+                    DEPOT_FOR.get(polarity, FALLBACK_DEPOT),
+                    "TO_DEPOT"
+                )
+
+            elif self.pickups:
+                # Empty station: inspect next pickup
+                self._go_to(self.pickups[0], "TO_PICKUP")
+
             else:
-                self._choose_next()
-        else:                              # just dropped
+                # No box found anywhere
+                self._go_to("start", "TO_HOME")
+
+        elif self.state == "TO_DEPOT":
             self.delivered += 1
             self.polarity = None
-            self._choose_next()
-        return self._leave_towards(self.remaining[0])   # out of a dead end: always "reverse"
+            self._go_to("start", "TO_HOME")
+
+        return self._leave_towards(self.remaining[0])
 
     def expecting_line_end(self):
         return len(self.remaining) == 1 and is_dead_end(self.remaining[0])

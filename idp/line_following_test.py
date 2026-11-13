@@ -12,7 +12,15 @@ from constants import *
 from state_machine import Mission, OPPOSITE, direction, expected_sides
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
-PICKUPS = ["left_pickup_6_end"]
+PICKUPS = [
+    "left_pickup_1_end",
+    "left_pickup_2_end",
+    "left_pickup_3_end",
+    "left_pickup_4_end",
+    "left_pickup_5_end",
+    "left_pickup_6_end"
+]
+
 
 
 # ---- sensing --------------------------------------------------------------
@@ -199,10 +207,22 @@ def stop_in_box(agv):
 
 
 # ---- jobs (placeholders until the mechanism and hall sensor are wired in) ---------
-def collect(agv):
-    print("COLLECT (placeholder)")
+def collect(agv, station):
+    """Check whether a box exists at this station."""
+
+    print("Checking:", station)
+
+    # Simulated distance sensor
+    box_detected = station == "left_pickup_6_end"
+
+    if not box_detected:
+        print("No box found")
+        return False, None
+
+    print("Box found! Collecting...")
     sleep(1)
-    return "N"
+
+    return True, "N"
     # return agv.read_hall_sensor()   # None for now -> fallback depot (upper green)
 
 
@@ -245,6 +265,17 @@ def run(agv, mission, from_box=True):
             turn_at_junction(agv, action, latency)
 
 
+            if out_of_pickup and mission.state == "TO_PICKUP":
+                agv.backward(BACKWARD_SPEED)
+                reverse_start = ticks_ms()
+
+                while ticks_diff(ticks_ms(), reverse_start) < BETWEEN_PICKUP_BACK_MS:
+                    agv.reverse_follow_line(BACKWARD_SPEED)
+                    sleep_ms(10)
+
+                agv.stop()
+
+
             if out_of_pickup and mission.state == "TO_DEPOT":
                 looking_for_depot = True
 
@@ -254,8 +285,15 @@ def run(agv, mission, from_box=True):
         if mission.expecting_line_end():
             follow_to_end(agv)
             job = mission.on_line_end()
-            polarity = collect(agv) if job == "collect" else drop(agv)
-            mission.on_job_done(polarity)
+
+            if job == "collect":
+                box_found, polarity = collect(agv, mission.here)
+                mission.on_job_done(polarity, box_found=box_found)
+
+            else:
+                drop(agv)
+                mission.on_job_done()
+
             print("[%s] at %s -> turn around" % (mission.state, mission.here))
             turn_around(agv, back_up=(job == "collect"))   # no backing up at depots
             out_of_pickup = job == "collect"
