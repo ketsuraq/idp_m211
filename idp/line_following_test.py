@@ -9,11 +9,10 @@ state_machine.Mission. See docs/navigation.md and docs/turnaround_test.md.
 
 from agv import AGV
 from constants import *
-from main_test import turn_at_junction
 from state_machine import Mission, OPPOSITE, direction, expected_sides
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
-PICKUPS = ["right_pickup_3_end"]
+PICKUPS = ["left_pickup_6_end"]
 
 
 # ---- sensing --------------------------------------------------------------
@@ -26,7 +25,31 @@ def sides(readings):
     if right:
         return "right"
     return None
+    
 
+def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
+    """Drive forward so the wheels reach the junction, then pivot onto the new line."""
+    # 1. Walk forward (line following) to put the wheel axle over the junction.
+    # Where there's no line ahead, follow_line keeps the last command, so start going straight.
+    agv.forward(FORWARD_SPEED)
+    start = ticks_ms()
+    while ticks_diff(ticks_ms(), start) < latency * 1000:
+        agv.follow_line(FORWARD_SPEED)
+        sleep_ms(10)
+
+    # 2. Blind turn to get the sensors off the old line
+    agv.turn(direction, TURN_SPEED)
+    sleep(TURN_TIME)
+
+    # 3. Keep turning until either middle sensor finds the new line
+    start = ticks_ms()
+    while True:
+        readings = agv.read_line_sensor()
+        if readings[1] and readings[2]:
+            break
+        if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
+            raise RuntimeError("Turn timed out without finding the line")
+    agv.stop()
 
 def drive_to_junction(agv, drive):
     """Call drive() (e.g. follow the line) until an outer sensor sees a line on
@@ -66,6 +89,43 @@ def follow_to_end(agv):
         check_timeout(agv, start, "the end of the line")
         sleep_ms(10)
     agv.stop()
+
+def drive_to_depot(agv):
+    """Find depot junction using the long gap between branches."""
+
+    start = ticks_ms()
+    clear_start = None
+    count = 0
+    on_junction = False
+
+    while True:
+        readings = agv.read_line_sensor()
+        detected = sides(readings)
+
+        if detected:
+            count += 1
+
+            if count >= CONFIRM_READS and not on_junction:
+                on_junction = True
+
+                if clear_start is not None:
+                    gap = ticks_diff(ticks_ms(), clear_start)
+                    print("Junction gap:", gap, "ms")
+
+                    if gap >= DEPOT_GAP_MS:
+                        return detected
+
+        else:
+            if on_junction or clear_start is None:
+                clear_start = ticks_ms()
+
+            on_junction = False
+            count = 0
+
+        agv.follow_line(FORWARD_SPEED)
+        check_timeout(agv, start, "depot junction")
+        sleep_ms(10)
+
 
 
 def recheck(agv, mission, seen):
@@ -142,7 +202,8 @@ def stop_in_box(agv):
 def collect(agv):
     print("COLLECT (placeholder)")
     sleep(1)
-    return agv.read_hall_sensor()   # None for now -> fallback depot (upper green)
+    return "N"
+    # return agv.read_hall_sensor()   # None for now -> fallback depot (upper green)
 
 
 def drop(agv):
@@ -155,6 +216,9 @@ def run(agv, mission, from_box=True):
     """Drive the mission. from_box: the robot starts in the start box, so line follow for
     START_FOLLOW_MS first. Otherwise (mid-route tests) it starts on a line, right away."""
     start = ticks_ms()
+
+    out_of_pickup = False
+    looking_for_depot = False
 
     if from_box:
         while ticks_diff(ticks_ms(), start) < START_FOLLOW_MS:
@@ -175,14 +239,17 @@ def run(agv, mission, from_box=True):
             return
         if action == "straight":
             pass_junction(agv)
+        
         elif action in ("left", "right"):
             latency = DEPOT_CORNER_LATENCY if "depot" in mission.here else CORNER_LATENCY
             turn_at_junction(agv, action, latency)
-            if out_of_pickup:
-                # Turning out of a pickup branch carries the robot past the next junction
-                mission.here = mission.remaining.pop(0)
-                print("[%s] skipped to %s after turning out of the pickup" % (mission.state, mission.here))
+
+
+            if out_of_pickup and mission.state == "TO_DEPOT":
+                looking_for_depot = True
+
         out_of_pickup = False
+
 
         if mission.expecting_line_end():
             follow_to_end(agv)
@@ -200,8 +267,28 @@ def run(agv, mission, from_box=True):
                 mission.here = mission.remaining.pop(0)
                 mission.heading = direction(mission.here, mission.remaining[0])
                 print("[%s] out of the depot onto the main line at %s, facing %s" % (mission.state, mission.here, mission.heading))
-        seen = drive_to_junction(agv, lambda: agv.follow_line(FORWARD_SPEED))
+    
+        if looking_for_depot:
+            seen = drive_to_depot(agv)
+
+            # Synchronise the route with the depot junction
+            for i, node in enumerate(mission.remaining):
+                if "depot" in node and not node.endswith("_end"):
+                    mission.remaining = mission.remaining[i:]
+                    break
+            else:
+                raise RuntimeError("No depot junction in route")
+
+            looking_for_depot = False
+
+        else:
+            seen = drive_to_junction(
+                agv,
+                lambda: agv.follow_line(FORWARD_SPEED)
+            )
+
         action = mission.on_junction(recheck(agv, mission, seen))
+
 
 
 def main():

@@ -1,86 +1,45 @@
+"""Mid-route test: start just past the upper green depot junction (right_depot_2).
+
+Place the robot on the right-hand main line, facing N (towards the ramp), with the sensors
+on the line a little past the right_depot_2 branch. It then runs the rest of the first test:
+right pickup 1 (straight) -> pickup 2 (straight) -> pickup 3 (left) -> (collect) -> turn around
+-> upper green depot -> (drop) -> turn around -> back to the start box.
+
+Same driving code as line_following_test.py (run() with from_box=False).
+See docs/turnaround_test.md.
+"""
 
 from agv import AGV
-from constants import *
-from utime import sleep, sleep_ms
+from line_following_test import PICKUPS, run
+from state_machine import Mission, route
+from utime import sleep
 
-def timed_turn(agv, direction):
-    agv.stop()
-    agv.turn(direction, TURN_SPEED)
-    sleep(TURN_TIME)
-    agv.stop()
 
-def continuous_turn(agv, direction):
-    agv.stop()
-    agv.turn(direction, TURN_SPEED)
-    sleep(TURN_TIME)
-    while agv.identify_config(agv.read_line_sensor()) != "line":
-        print(agv.read_line_sensor())
-        continue
-    agv.stop()
-    
+
+
 def main():
     agv = AGV()
-    junction_active = False
+    mission = Mission(PICKUPS)
 
-    # 1. Initial left turn
-    continuous_turn(agv, "left")
-    agv.state.phase = "to_corner"
+    try:
+        print("Starting from start box in:")
 
-    while True:
-        config = agv.follow_line(FORWARD_SPEED)
+        for s in range(3, 0, -1):
+            print(s)
+            sleep(1)
 
-        junction = config in (
-            "left turn", "right turn", "parallel"
-        )
+        run(agv, mission, from_box=True)
 
-        # Detect each junction only once
-        if junction and not junction_active:
-            junction_active = True
+    except KeyboardInterrupt:
+        print("Ctrl-C")
 
-            action = agv.state.handle_junction(config)
+    except Exception as e:
+        print("Error:", e)
 
-            if action in ("left", "right"):
-                continuous_turn(agv, action)
+    finally:
+        agv.stop()
+        print("Finished in state", mission.state)
 
-            elif action == "stop":
-                print("Unexpected junction")
-                break
-
-        elif not junction:
-            junction_active = False
-
-        # Third junction reached
-        if agv.state.phase == "to_end":
-            break
-
-        if config in ("line lost", "unknown"):
-            agv.stop()
-            print("Line lost or unknown:", config)
-            break
-
-        sleep_ms(10)
-
-    # 2. Follow final branch
-    if agv.state.phase == "to_end":
-        print("Following final branch")
-
-        while True:
-            config = agv.follow_line(FORWARD_SPEED)
-
-            if config == "line lost":
-                agv.stop()
-                print("End of line detected")
-                break
-
-            elif config == "unknown":
-                agv.stop()
-                print("Unknown sensor pattern")
-                break
-
-            sleep_ms(10)
-
-
-    agv.stop()
 
 
 if __name__ == "__main__":
