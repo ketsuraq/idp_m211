@@ -1,7 +1,7 @@
 """First full-route test.
 
 start box -> right pickup 3 -> (collect) -> turn around -> upper green depot -> (drop)
--> turn around -> back to the start box.
+-> reverse out to the depot junction -> back to the start box.
 
 This file only DRIVES. Every decision (which way to turn, what to do next) comes from
 state_machine.Mission. See docs/navigation.md and docs/turnaround_test.md.
@@ -9,7 +9,7 @@ state_machine.Mission. See docs/navigation.md and docs/turnaround_test.md.
 
 from agv import AGV
 from constants import *
-from state_machine import Mission, OPPOSITE, direction, expected_sides
+from state_machine import Mission, OPPOSITE, expected_sides
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
 PICKUPS = [
@@ -200,6 +200,32 @@ def turn_around(agv, back_up=True):
         agv.stop()
 
 
+def reverse_out_of_depot(agv):
+    """After a drop: reverse back down the depot branch until the outer sensors find the
+    main line. Returns the sides seen ("both" expected), ready for mission.on_junction.
+
+    It doesn't turn. Going in reverse keeps the robot's heading, so the mission
+    works out the turn at the depot junction as usual (left out of a right/green depot,
+    right out of a left/red one). When the sensors reach the main line, the axle is behind
+    it by the sensor-to-axle distance, which is the same as finding a junction going forwards.
+    So turn_at_junction's normal forward walk puts the axle over the junction."""
+    # 1. The drop happens with the sensors on the depot edge bar. Reverse until both outer
+    #    sensors are clear of it, or the bar would be mistaken for the main line.
+    agv.backward(BACKWARD_SPEED)   # reverse_follow_line keeps the last command on a bar
+    count = 0
+    start = ticks_ms()
+    while count < CONFIRM_READS:
+        r = agv.read_line_sensor()
+        count = count + 1 if not (r[0] or r[3]) else 0
+        agv.reverse_follow_line(BACKWARD_SPEED)
+        check_timeout(agv, start, "the depot edge to clear")
+        sleep_ms(10)
+
+    # 2. Keep reversing along the branch until an outer sensor sees the main line.
+    #    The motors are left running: turn_at_junction takes over from here.
+    return drive_to_junction(agv, lambda: agv.reverse_follow_line(BACKWARD_SPEED))
+
+
 def stop_in_box(agv):
     agv.forward(FORWARD_SPEED)
     sleep(CORNER_LATENCY)   # wheels over the start T
@@ -243,7 +269,7 @@ def run(agv, mission, from_box=True):
     if from_box:
         while ticks_diff(ticks_ms(), start) < START_FOLLOW_MS:
             agv.follow_line(FORWARD_SPEED)
-            sleep_ms(10)
+            sleep_ms(5)
 
     # Now start looking for junctions
     seen = drive_to_junction(agv, lambda: agv.follow_line(FORWARD_SPEED))
@@ -271,7 +297,7 @@ def run(agv, mission, from_box=True):
 
                 while ticks_diff(ticks_ms(), reverse_start) < BETWEEN_PICKUP_BACK_MS:
                     agv.reverse_follow_line(BACKWARD_SPEED)
-                    sleep_ms(10)
+                    sleep_ms(5)
 
                 agv.stop()
 
@@ -294,18 +320,20 @@ def run(agv, mission, from_box=True):
                 drop(agv)
                 mission.on_job_done()
 
+            if job == "drop":
+                # Reverse out to the depot junction. The mission treats this as a "reverse"
+                # (heading unchanged) and picks the turn there; the loop top then makes it.
+                print("[%s] at %s -> reverse out of depot" % (mission.state, mission.here))
+                seen = reverse_out_of_depot(agv)
+                action = mission.on_junction(recheck(agv, mission, seen))
+                continue
+
             print("[%s] at %s -> turn around" % (mission.state, mission.here))
-            turn_around(agv, back_up=(job == "collect"))   # no backing up at depots
-            out_of_pickup = job == "collect"
+            turn_around(agv, back_up=True)
+            out_of_pickup = True
             mission.heading = OPPOSITE[mission.heading]   # now facing back the way it came
             print("[%s] turned around, now facing %s" % (mission.state, mission.heading))
-            if job == "drop":
-                # Depot lines are short: the spin lands it on the main line, already facing the
-                # next junction, so the depot junction and its turn are done
-                mission.here = mission.remaining.pop(0)
-                mission.heading = direction(mission.here, mission.remaining[0])
-                print("[%s] out of the depot onto the main line at %s, facing %s" % (mission.state, mission.here, mission.heading))
-    
+
         if looking_for_depot:
             seen = drive_to_depot(agv)
 
