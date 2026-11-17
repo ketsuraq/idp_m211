@@ -13,11 +13,6 @@ from state_machine import Mission, OPPOSITE, expected_sides
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
 PICKUPS = [
-    "left_pickup_1_end",
-    "left_pickup_2_end",
-    "left_pickup_3_end",
-    "left_pickup_4_end",
-    "left_pickup_5_end",
     "left_pickup_6_end"
 ]
 
@@ -39,7 +34,9 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
     """Drive forward so the wheels reach the junction, then pivot onto the new line."""
     # 1. Walk forward (line following) to put the wheel axle over the junction.
     # Where there's no line ahead, follow_line keeps the last command, so start going straight.
-    agv.forward(FORWARD_SPEED)
+    # latency=0 (axle already over the junction, e.g. out of a depot) skips this entirely.
+    if latency > 0:
+        agv.forward(FORWARD_SPEED)
     start = ticks_ms()
     while ticks_diff(ticks_ms(), start) < latency * 1000:
         agv.follow_line(FORWARD_SPEED)
@@ -58,6 +55,33 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
         if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
             raise RuntimeError("Turn timed out without finding the line")
     agv.stop()
+
+def back_off_line(agv):
+    """If an outer sensor is already on a line (e.g. a turn carried the sensors onto the next
+    junction), reverse until both outer sensors are clear on CONFIRM_READS reads in a row,
+    then set off forwards. The junction is then seen while approaching from behind, which
+    is what CORNER_LATENCY and recheck are tuned for. Does nothing if the outer sensors are
+    already clear. Assumes the line under the sensor is the NEXT junction, not the one just
+    turned at (true while the sensors sit close to the axle).
+    Only called by run() straight after turning out of a branch (pickup or depot) onto the
+    main line, never at the start box or after ordinary main-line corners."""
+    r = agv.read_line_sensor()
+    if not (r[0] or r[3]):
+        return
+    print("outer sensor already on a line: backing off it")
+    agv.backward(BACKWARD_SPEED)   # reverse_follow_line keeps the last command on junction reads
+    count = 0
+    start = ticks_ms()
+    while count < CONFIRM_READS:
+        r = agv.read_line_sensor()
+        count = count + 1 if not (r[0] or r[3]) else 0
+        agv.reverse_follow_line(BACKWARD_SPEED)
+        check_timeout(agv, start, "the outer sensors to clear (backing off)")
+        sleep_ms(10)
+    # Go straight into forwards: follow_line alone keeps the last command (reverse) when
+    # it reads anything other than a centred or slightly-off line
+    agv.forward(FORWARD_SPEED)
+
 
 def drive_to_junction(agv, drive):
     """Call drive() (e.g. follow the line) until an outer sensor sees a line on
@@ -201,29 +225,19 @@ def turn_around(agv, back_up=True):
 
 
 def reverse_out_of_depot(agv):
-    """After a drop: reverse back down the depot branch until the outer sensors find the
-    main line. Returns the sides seen ("both" expected), ready for mission.on_junction.
+    """After a drop: back up (line following) for DEPOT_BACKWARDS_TIME seconds, then stop.
+    This should leave the wheel axle over the main line, ready to pivot straight onto it,
+    with no forward walk (there may be no room to go back and forth).
 
-    It doesn't turn. Going in reverse keeps the robot's heading, so the mission
-    works out the turn at the depot junction as usual (left out of a right/green depot,
-    right out of a left/red one). When the sensors reach the main line, the axle is behind
-    it by the sensor-to-axle distance, which is the same as finding a junction going forwards.
-    So turn_at_junction's normal forward walk puts the axle over the junction."""
-    # 1. The drop happens with the sensors on the depot edge bar. Reverse until both outer
-    #    sensors are clear of it, or the bar would be mistaken for the main line.
-    agv.backward(BACKWARD_SPEED)   # reverse_follow_line keeps the last command on a bar
-    count = 0
+    It doesn't turn. Going in reverse keeps the robot's heading, so the mission works out
+    the turn at the depot junction as usual (left out of a right/green depot, right out of
+    a left/red one)."""
+    agv.backward(BACKWARD_SPEED)   # reverse_follow_line keeps the last command on the depot bar
     start = ticks_ms()
-    while count < CONFIRM_READS:
-        r = agv.read_line_sensor()
-        count = count + 1 if not (r[0] or r[3]) else 0
+    while ticks_diff(ticks_ms(), start) < DEPOT_BACKWARDS_TIME * 1000:
         agv.reverse_follow_line(BACKWARD_SPEED)
-        check_timeout(agv, start, "the depot edge to clear")
         sleep_ms(10)
-
-    # 2. Keep reversing along the branch until an outer sensor sees the main line.
-    #    The motors are left running: turn_at_junction takes over from here.
-    return drive_to_junction(agv, lambda: agv.reverse_follow_line(BACKWARD_SPEED))
+    agv.stop()
 
 
 def stop_in_box(agv):
@@ -279,6 +293,9 @@ def run(agv, mission, from_box=True):
     while True:
         mission.elapsed_s = ticks_diff(ticks_ms(), start) // 1000
         print("[%s] at %s -> %s" % (mission.state, mission.here, action))
+        # True once this pass turns out of a branch (pickup or depot) onto the main line:
+        # only then is the next leg started with back_off_line
+        out_of_branch = False
 
         if action == "stop":
             stop_in_box(agv)
@@ -289,7 +306,7 @@ def run(agv, mission, from_box=True):
         elif action in ("left", "right"):
             latency = DEPOT_CORNER_LATENCY if "depot" in mission.here else CORNER_LATENCY
             turn_at_junction(agv, action, latency)
-
+            out_of_branch = out_of_pickup   # this turn took it from a pickup branch onto the main line
 
             if out_of_pickup and mission.state == "TO_PICKUP":
                 agv.backward(BACKWARD_SPEED)
@@ -321,18 +338,29 @@ def run(agv, mission, from_box=True):
                 mission.on_job_done()
 
             if job == "drop":
-                # Reverse out to the depot junction. The mission treats this as a "reverse"
-                # (heading unchanged) and picks the turn there; the loop top then makes it.
+                # Timed back-up to the depot junction, then pivot onto the main line.
                 print("[%s] at %s -> reverse out of depot" % (mission.state, mission.here))
-                seen = reverse_out_of_depot(agv)
-                action = mission.on_junction(recheck(agv, mission, seen))
-                continue
+                reverse_out_of_depot(agv)
+                # Nothing is sensed on the way back, so report the junction exactly as the
+                # map expects it. The mission then gives the turn (left or right).
+                action = mission.on_junction(expected_sides(mission.remaining[0], mission.heading))
+                print("[%s] at %s -> %s" % (mission.state, mission.here, action))
+                if action not in ("left", "right"):
+                    raise RuntimeError("expected a turn out of the depot, got " + action)
+                turn_at_junction(agv, action, latency=0)   # axle already over the junction
+                out_of_branch = True
 
-            print("[%s] at %s -> turn around" % (mission.state, mission.here))
-            turn_around(agv, back_up=True)
-            out_of_pickup = True
-            mission.heading = OPPOSITE[mission.heading]   # now facing back the way it came
-            print("[%s] turned around, now facing %s" % (mission.state, mission.heading))
+            else:
+                print("[%s] at %s -> turn around" % (mission.state, mission.here))
+                turn_around(agv, back_up=True)
+                out_of_pickup = True
+                mission.heading = OPPOSITE[mission.heading]   # now facing back the way it came
+                print("[%s] turned around, now facing %s" % (mission.state, mission.heading))
+
+        # The turn out of a branch can leave an outer sensor on the next line: back off it
+        # so the next leg meets it from behind (after the pickup back-up, if there was one)
+        if out_of_branch:
+            back_off_line(agv)
 
         if looking_for_depot:
             seen = drive_to_depot(agv)
