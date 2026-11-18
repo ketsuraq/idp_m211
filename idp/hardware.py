@@ -36,8 +36,18 @@ class Line:
         """Return the current digital value of the line sensor."""
         return self.sensor.value()
 
+class Ir:
+    def __init__(self, digitalPin: int):
+        """Create an IR receiver on a digital input pin."""
+        self.sensor = Pin(digitalPin, Pin.IN)
+
+    def get_value(self):
+        """Return the raw pin value: 0 when infrared is seen, 1 when it isn't (active-low)."""
+        return self.sensor.value()
+
+
 class Hardware:
-    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line):
+    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir):
         """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
@@ -45,6 +55,8 @@ class Hardware:
         self.line2 = line2
         self.line3 = line3
         self.line4 = line4
+        self.ir = ir
+
 
 
 def create_hardware():
@@ -55,5 +67,6 @@ def create_hardware():
         line1=Line(27, 1), #Pin 32
         line2=Line(26, 2), #Pin 31
         line3=Line(21, 3), #Pin 27
-        line4=Line(20, 4) #Pin 26
+        line4=Line(20, 4), #Pin 26
+        ir=Ir(22) #Pin 29
     )
