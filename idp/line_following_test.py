@@ -13,6 +13,11 @@ from state_machine import Mission, OPPOSITE, expected_sides
 from utime import sleep, sleep_ms, ticks_ms, ticks_diff
 
 PICKUPS = [
+    "left_pickup_1_end",
+    "left_pickup_2_end",
+    "left_pickup_3_end",
+    "left_pickup_4_end",
+    "left_pickup_5_end",
     "left_pickup_6_end"
 ]
 
@@ -307,6 +312,15 @@ def run(agv, mission, from_box=True):
         elif action in ("left", "right"):
             latency = DEPOT_CORNER_LATENCY if "depot" in mission.here else CORNER_LATENCY
             turn_at_junction(agv, action, latency)
+            
+            if mission.here == "start":
+                agv.forward(FORWARD_SPEED)
+                ignore_start = ticks_ms()
+
+        while ticks_diff(ticks_ms(), ignore_start) < START_EXIT_IGNORE_MS:
+            agv.follow_line(FORWARD_SPEED)
+            sleep_ms(5)
+            
             out_of_branch = out_of_pickup   # this turn took it from a pickup branch onto the main line
 
             if out_of_pickup and mission.state == "TO_PICKUP":
@@ -402,3 +416,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
