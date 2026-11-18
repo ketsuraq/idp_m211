@@ -12,7 +12,7 @@ TURN_TIME = 45 / TURN_SPEED   # blind part of a junction turn (gets the sensors 
 APPROACH_SPEED = 50
 APPROACH_TIME = 1
 
-CORNER_LATENCY = 48 / FORWARD_SPEED  # Time to walk forward after a corner before starting to turn to account for difference in position of wheel and sensors
+CORNER_LATENCY = 51 / FORWARD_SPEED  # Time to walk forward after a corner before starting to turn to account for difference in position of wheel and sensors
 
 # Depot constants
 DEPOT_CORNER_LATENCY = 40 / FORWARD_SPEED  # same, but at the depot junctions

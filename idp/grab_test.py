@@ -34,7 +34,7 @@ from utime import sleep, sleep_ms, ticks_diff, ticks_ms
 # Branches to check, side by side, in this order. Branch 1 is nearest the corner.
 # To check more, extend the lists or uncomment the left side.
 SCAN_PLAN = [
-    ("right", [1, 2, 3]),
+    ("right", [1, 2, 3, 4, 5, 6]),
     #("left", [1, 2, 3]),
 ]
 # After delivering a box: "home" = back to the start box (this test),
