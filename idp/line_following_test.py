@@ -130,6 +130,7 @@ def drive_to_depot(agv):
     count = 0
     on_junction = False
 
+    agv.forward(FORWARD_SPEED)
     while True:
         readings = agv.read_line_sensor()
         detected = sides(readings)
