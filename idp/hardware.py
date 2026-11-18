@@ -1,6 +1,7 @@
 # Hardware initialization and management
-from machine import Pin, PWM
+from machine import Pin, PWM, I2C
 from constants import *
+from VL53L0X import VL53L0X   # plain import: hardware.py is a top-level module, not a package
 
 
 class Motor:
@@ -47,7 +48,7 @@ class Ir:
 
 
 class Hardware:
-    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir):
+    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir, distance_sensor: DistanceSensor):
         """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
@@ -56,8 +57,20 @@ class Hardware:
         self.line3 = line3
         self.line4 = line4
         self.ir = ir
+        self.distance_sensor = distance_sensor
 
-
+class DistanceSensor:
+    def __init__(self, id: int, sda_pin: int, scl_pin: int):
+        """Create a distance sensor using the VL53L0X module."""
+        i2c_bus: I2C = I2C(id, sda=Pin(sda_pin), scl=Pin(scl_pin))
+        self.sensor = VL53L0X(i2c_bus)
+        self.sensor.set_Vcsel_pulse_period(self.sensor.vcsel_period_type[0], 18)
+        self.sensor.set_Vcsel_pulse_period(self.sensor.vcsel_period_type[1], 14)
+        self.sensor.start()
+    
+    def value(self):
+        """Return the current distance reading in millimeters."""
+        return self.sensor.read()
 
 def create_hardware():
     """Return a Hardware object with the AGV's motors and sensors."""
@@ -68,5 +81,6 @@ def create_hardware():
         line2=Line(26, 2), #Pin 31
         line3=Line(21, 3), #Pin 27
         line4=Line(20, 4), #Pin 26
-        ir=Ir(22) #Pin 29
+        ir=Ir(22), #Pin 29
+        distance_sensor=DistanceSensor(1, 10, 11)
     )

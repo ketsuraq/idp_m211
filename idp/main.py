@@ -1,25 +1,21 @@
-"""Mid-route test: start just past the upper green depot junction (right_depot_2).
+"""Grab test (see grab_test.py): start in the start box, facing the ramp.
 
-Place the robot on the right-hand main line, facing N (towards the ramp), with the sensors
-on the line a little past the right_depot_2 branch. It then runs the rest of the first test:
-right pickup 1 (straight) -> pickup 2 (straight) -> pickup 3 (left) -> (collect) -> turn around
--> upper green depot -> (drop) -> turn around -> back to the start box.
+Drives down each branch in grab_test.SCAN_PLAN to the end of the line. A distance reading
+below BOX_DETECT_MM on the way means a box: at the end, collect, turn around, deliver to the
+depot, go home. Empty branches: turn around at the end, check the next one. No box anywhere: stop at the
+end of the last branch.
 
-Same driving code as line_following_test.py (run() with from_box=False).
-See docs/turnaround_test.md.
+main.py runs by itself when the Pico powers up, so the countdown gives time to let go.
 """
 
 from agv import AGV
-from line_following_test import PICKUPS, run
-from state_machine import Mission, route
+from grab_test import AFTER_DROP, SCAN_PLAN, GrabMission, run
 from utime import sleep
-
-
 
 
 def main():
     agv = AGV()
-    mission = Mission(PICKUPS)
+    mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
 
     try:
         print("Starting from start box in:")
@@ -28,7 +24,7 @@ def main():
             print(s)
             sleep(1)
 
-        run(agv, mission, from_box=True)
+        run(agv, mission)
 
     except KeyboardInterrupt:
         print("Ctrl-C")
@@ -38,8 +34,7 @@ def main():
 
     finally:
         agv.stop()
-        print("Finished in state", mission.state)
-
+        print("Finished in state", mission.state, "| checked:", mission.checked)
 
 
 if __name__ == "__main__":

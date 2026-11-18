@@ -69,6 +69,10 @@ class AGV:
             self.hw.line4.get_value()
         ]
 
+    def read_distance_sensor(self):
+        """Return the current distance reading in millimeters from the VL53L0X sensor."""
+        return self.hw.distance_sensor.value()
+
     def centred_on_line(self):
         """Check only the two middle line sensors."""
         readings = self.read_line_sensor()
