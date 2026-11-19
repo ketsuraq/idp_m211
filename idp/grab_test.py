@@ -120,6 +120,64 @@ def collect(agv, station):
     sleep(1)
     return None
 
+def leave_start_box(agv, mission):
+    """
+    After turning out of the start T, cross the square boundary
+    without treating it as a junction.
+
+    Only resume junction detection when:
+    - Enough time has passed to cross the boundary.
+    - Both middle sensors are on the line.
+    - Both outer sensors are clear.
+    """
+
+    print("Leaving start box - ignoring boundary")
+
+    agv.forward(FORWARD_SPEED)
+
+    start = ticks_ms()
+    clear_count = 0
+
+    while True:
+        readings = agv.read_line_sensor()
+
+        elapsed = ticks_diff(ticks_ms(), start)
+
+        # Normal line following, but DO NOT detect junctions
+        agv.follow_line(FORWARD_SPEED)
+
+        # Check that we're centred on the line and
+        # neither outer sensor is touching the box edge
+        centred = readings[1] == 1 and readings[2] == 1
+        outer_clear = readings[0] == 0 and readings[3] == 0
+
+        if elapsed >= START_EXIT_IGNORE_MS and centred and outer_clear:
+            clear_count += 1
+        else:
+            clear_count = 0
+
+        if clear_count >= CONFIRM_READS:
+            break
+
+        if elapsed > 3000:
+            agv.stop()
+            raise RuntimeError("Could not clear start box")
+
+        sleep_ms(10)
+
+    print("Start box cleared - normal junction detection enabled")
+
+    # Tell the state machine we passed the box boundary.
+    # Both left and right branches exist at this crossing.
+    action = mission.on_junction("both")
+
+    if action != "straight":
+        agv.stop()
+        raise RuntimeError("Expected straight at box edge")
+
+    # Keep driving; don't stop at the boundary.
+    agv.forward(FORWARD_SPEED)
+
 
 # ---- main loop --------------------------------------------------------------------
 def run(agv, mission):
@@ -148,6 +206,11 @@ def run(agv, mission):
         elif action in ("left", "right"):
             latency = DEPOT_CORNER_LATENCY if "depot" in mission.here else CORNER_LATENCY
             turn_at_junction(agv, action, latency)
+
+            # Special handling for leaving the start square
+            if mission.here == "start":
+                leave_start_box(agv, mission)
+
             out_of_branch = out_of_pickup   # turned out of a pickup branch onto the main line
 
             if out_of_pickup and mission.state == "TO_PICKUP":

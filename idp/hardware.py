@@ -77,10 +77,10 @@ def create_hardware():
     return Hardware(
         motor1=Motor(4, 5, LEFT_SPEED_MULTIPLIER),   # left wheel
         motor2=Motor(7, 6), #Second set of pins are reversed!!!
-        line1=Line(27, 1), #Pin 32
-        line2=Line(26, 2), #Pin 31
-        line3=Line(21, 3), #Pin 27
-        line4=Line(20, 4), #Pin 26
+        line1=Line(21, 1), #Pin 32 (27)
+        line2=Line(20, 2), #Pin 31 (26)
+        line3=Line(19, 3), #Pin 27 (21)
+        line4=Line(18, 4), #Pin 26 (20)
         ir=Ir(22), #Pin 29
         distance_sensor=DistanceSensor(1, 10, 11)
     )
