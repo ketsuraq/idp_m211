@@ -55,8 +55,9 @@ BOX_CONFIRM_READS = 2
 # ---- mission ----------------------------------------------------------------------
 class GrabMission(Mission):
     """Mission.on_job_done already sends the robot to the depot when a box is found and
-    to the next pickup when one is empty. This changes two things:
+    to the next pickup when one is empty. This changes three things:
       - no box on any branch -> "stop" (stay at the end of the last branch), not home
+      - box whose pole couldn't be read -> nearest depot (upper depot on the same side)
       - after a drop, AFTER_DROP = "continue" goes on to the next unchecked branch"""
 
     def __init__(self, scan_plan, after_drop="home"):
@@ -72,6 +73,11 @@ class GrabMission(Mission):
                 self.pickups.pop(0)
                 self.state = "DONE"
                 return "stop"
+            if box_found and polarity is None:   # pole unknown: nearest depot on this side
+                self.pickups.pop(0)
+                side = self.here.split("_")[0]   # "right" / "left"
+                self._go_to(side + "_depot_2_end", "TO_DEPOT")   # depot 2 is nearer the pickups
+                return self._leave_towards(self.remaining[0])
         elif self.state == "TO_DEPOT" and self.after_drop == "continue" and self.pickups:
             self.delivered += 1
             self.polarity = None
@@ -114,11 +120,12 @@ def follow_branch(agv):
 
 # ---- jobs (placeholders until the mechanism and hall sensor are wired in) ---------
 def collect(agv, station):
-    """Pick up the box. Returns its polarity: "N", "S", or None if unknown (no hall
-    sensor yet), which sends it to FALLBACK_DEPOT (upper green)."""
-    print("COLLECT at", station, "(placeholder)")
+    """Read the box's magnet, then pick it up (placeholder). Returns its polarity as the
+    map uses it: "N", "S", or None if no pole was found (-> nearest depot)."""
+    pole = agv.detect_pole()
+    print("COLLECT at", station, "pole:", pole, "(pick-up is a placeholder)")
     sleep(1)
-    return None
+    return {"north": "N", "south": "S"}.get(pole)
 
 def leave_start_box(agv, mission):
     """

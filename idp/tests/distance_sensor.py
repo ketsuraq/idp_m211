@@ -1,10 +1,10 @@
 from machine import Pin, I2C
-from libs.VL53L0X.VL53L0X import VL53L0X
+from VL53L0X import VL53L0X
 from utime import sleep
 
 def test_vl53l0x():
     # config I2C Bus
-    i2c_bus = I2C(id=1, sda=Pin(10), scl=Pin(11)) # I2C0 on GP10 & GP11 not pin number 10,11
+    i2c_bus = I2C(1, sda=Pin(10), scl=Pin(11)) # I2C0 on GP10 & GP11 not pin number 10,11
     # print(i2c_bus.scan())  # Get the address (nb 41=0x29, 82=0x52)
     
     # Setup vl53l0 object

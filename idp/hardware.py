@@ -1,5 +1,6 @@
 # Hardware initialization and management
-from machine import Pin, PWM, I2C
+from machine import ADC, Pin, PWM, I2C
+from utime import sleep_ms
 from constants import *
 from VL53L0X import VL53L0X   # plain import: hardware.py is a top-level module, not a package
 
@@ -47,8 +48,28 @@ class Ir:
         return self.sensor.value()
 
 
+class Hall:
+    def __init__(self, adcPin: int):
+        """DRV5055A2 linear Hall sensor on an ADC pin. Measures the no-magnet (zero) voltage
+        straight away, so create it with no magnet nearby (i.e. at startup)."""
+        self.sensor = ADC(Pin(adcPin))
+        readings = []
+        for _ in range(HALL_ZERO_READS):
+            v = self.get_volts()
+            if v >= HALL_GLITCH_V:   # skip loose-contact glitches
+                readings.append(v)
+            sleep_ms(HALL_READ_MS)
+        readings.sort()
+        self.zero = readings[len(readings) // 2] if readings else HALL_DEFAULT_ZERO_V
+        print("Hall zero: %.3f V" % self.zero)
+
+    def get_volts(self):
+        """Return the sensor output in volts."""
+        return self.sensor.read_u16() * 3.3 / 65535
+
+
 class Hardware:
-    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir, distance_sensor: DistanceSensor):
+    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir, distance_sensor: DistanceSensor, hall: Hall):
         """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
@@ -58,6 +79,7 @@ class Hardware:
         self.line4 = line4
         self.ir = ir
         self.distance_sensor = distance_sensor
+        self.hall = hall
 
 class DistanceSensor:
     def __init__(self, id: int, sda_pin: int, scl_pin: int):
@@ -82,5 +104,6 @@ def create_hardware():
         line3=Line(19, 3), #Pin 27 (21)
         line4=Line(18, 4), #Pin 26 (20)
         ir=Ir(22), #Pin 29
-        distance_sensor=DistanceSensor(1, 10, 11)
+        distance_sensor=DistanceSensor(1, 10, 11),
+        hall=Hall(28), #GP28 / ADC2, Pin 34
     )

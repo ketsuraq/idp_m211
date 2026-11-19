@@ -38,3 +38,13 @@ BETWEEN_PICKUP_BACK_MS = 20000 / FORWARD_SPEED
 
 START_EXIT_IGNORE_MS = 2000
 
+
+# Hall sensor (DRV5055A2) for the box's magnet polarity
+HALL_ZERO_READS = 50        # readings taken at startup (no magnet) to find the zero voltage (median)
+HALL_DEFAULT_ZERO_V = 1.89  # zero used if every startup reading was a glitch (sensor unplugged?)
+HALL_THRESHOLD_V = 0.12     # change from zero that counts as a pole. Noise is ~±0.03 V; lower = picks up
+                            # weaker magnets but risks noise, higher = misses weak ones (weakest pole is +0.15 V)
+HALL_GLITCH_V = 0.15        # readings below this are loose-contact glitches and are ignored
+HALL_CONFIRM_READS = 5      # same pole this many readings in a row before trusting it
+HALL_READ_MS = 10           # time between readings
+HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
