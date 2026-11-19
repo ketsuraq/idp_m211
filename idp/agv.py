@@ -2,7 +2,7 @@
 
 from hardware import create_hardware
 from constants import *
-from utime import sleep_ms
+from utime import sleep_ms, ticks_diff, ticks_ms
 
 
 class AGV:
@@ -132,13 +132,29 @@ class AGV:
 
         return config
 
-    def read_magnet_sensor(self):
-        """Return the detected box polarity once the magnetic sensor is connected."""
-        pass
-
-    def read_hall_sensor(self):
-        """Return whether a box is present once the Hall sensor is connected."""
-        pass
+    def detect_pole(self):
+        """Call at the box. Returns "south" or "north" once
+        the same pole is seen HALL_CONFIRM_READS readings in a row, HALL_READ_MS apart, or
+        None if that doesn't happen within HALL_TIMEOUT_MS."""
+        hall = self.hw.hall
+        last = None
+        count = 0
+        start = ticks_ms()
+        while ticks_diff(ticks_ms(), start) < HALL_TIMEOUT_MS:
+            v = hall.get_volts()
+            if v >= HALL_GLITCH_V:   # below: loose-contact glitch, ignore it
+                if v > hall.zero + HALL_THRESHOLD_V:
+                    pole = "south"
+                elif v < hall.zero - HALL_THRESHOLD_V:
+                    pole = "north"
+                else:
+                    pole = None
+                count = count + 1 if pole is not None and pole == last else (1 if pole else 0)
+                last = pole
+                if count >= HALL_CONFIRM_READS:
+                    return pole
+            sleep_ms(HALL_READ_MS)
+        return None
 
     def read_ir_sensor(self):
         """Return the IR traffic-light signal once that sensor is connected."""
