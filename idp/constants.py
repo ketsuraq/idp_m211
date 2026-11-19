@@ -48,3 +48,8 @@ HALL_GLITCH_V = 0.15        # readings below this are loose-contact glitches and
 HALL_CONFIRM_READS = 5      # same pole this many readings in a row before trusting it
 HALL_READ_MS = 10           # time between readings
 HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
+
+
+# IR receiver (traffic light). Green is a series of lows of about 74-85 ms (measured).
+IR_LOW_HOLD_MS = 60         # the pin must stay low this long to count as the green signal
+IR_SAMPLE_MS = 10           # time between reads while waiting

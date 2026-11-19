@@ -252,6 +252,23 @@ def stop_in_box(agv):
     agv.stop()
 
 
+def wait_for_green(agv):
+    """Stop and block until the traffic light's green IR signal is seen.
+    Green shows up as lows of about 80 ms, so a low held for IR_LOW_HOLD_MS counts;
+    anything shorter (a glitch) is ignored."""
+    agv.stop()
+    low_since = None
+    while True:
+        if agv.read_ir_sensor():                                  # True = low = signal
+            if low_since is None:
+                low_since = ticks_ms()                            # a low just started
+            elif ticks_diff(ticks_ms(), low_since) >= IR_LOW_HOLD_MS:
+                return                                            # held long enough: green
+        else:
+            low_since = None                                      # went high: start over
+        sleep_ms(IR_SAMPLE_MS)
+
+
 # ---- jobs (placeholders until the mechanism and hall sensor are wired in) ---------
 def collect(agv, station):
     """Check whether a box exists at this station."""
