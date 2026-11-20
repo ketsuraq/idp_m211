@@ -98,6 +98,7 @@ def follow_branch(agv):
     found_mm = None
     start = ticks_ms()
     while True:
+        agv.check_stop_button()
         if found_mm is None:   # stop reading once found: the rest drives like follow_to_end
             mm = agv.read_distance_sensor()
             box_count = box_count + 1 if 0 < mm < BOX_DETECT_MM else 0
@@ -124,7 +125,7 @@ def collect(agv, station):
     map uses it: "N", "S", or None if no pole was found (-> nearest depot)."""
     pole = agv.detect_pole()
     print("COLLECT at", station, "pole:", pole, "(pick-up is a placeholder)")
-    sleep(1)
+    agv.interruptible_sleep(1000)
     return {"north": "N", "south": "S"}.get(pole)
 
 def leave_start_box(agv, mission):
@@ -146,6 +147,7 @@ def leave_start_box(agv, mission):
     clear_count = 0
 
     while True:
+        agv.check_stop_button()
         readings = agv.read_line_sensor()
 
         elapsed = ticks_diff(ticks_ms(), start)
@@ -192,6 +194,7 @@ def run(agv, mission):
     that pickup branches are driven with follow_branch (notes whether there's a box)."""
     start = ticks_ms()
     while ticks_diff(ticks_ms(), start) < START_FOLLOW_MS:   # get past the box edge
+        agv.check_stop_button()
         agv.follow_line(FORWARD_SPEED)
         sleep_ms(5)
 
@@ -201,6 +204,8 @@ def run(agv, mission):
     looking_for_depot = False
 
     while True:
+        agv.check_stop_button()
+
         print("[%s] at %s -> %s" % (mission.state, mission.here, action))
         out_of_branch = False    # this pass turned from a branch onto the main line
 
@@ -226,6 +231,8 @@ def run(agv, mission):
                 agv.backward(BACKWARD_SPEED)
                 reverse_start = ticks_ms()
                 while ticks_diff(ticks_ms(), reverse_start) < BETWEEN_PICKUP_BACK_MS:
+                    agv.check_stop_button()
+
                     agv.reverse_follow_line(BACKWARD_SPEED)
                     sleep_ms(5)
                 agv.stop()

@@ -44,16 +44,18 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
         agv.forward(FORWARD_SPEED)
     start = ticks_ms()
     while ticks_diff(ticks_ms(), start) < latency * 1000:
+        agv.check_stop_button()
         agv.follow_line(FORWARD_SPEED)
         sleep_ms(10)
 
     # 2. Blind turn to get the sensors off the old line
     agv.turn(direction, TURN_SPEED)
-    sleep(TURN_TIME)
+    agv.interruptible_sleep(int(TURN_TIME * 1000))
 
     # 3. Keep turning until either middle sensor finds the new line
     start = ticks_ms()
     while True:
+        agv.check_stop_button()
         readings = agv.read_line_sensor()
         if readings[1] and readings[2]:
             break
@@ -78,6 +80,7 @@ def back_off_line(agv):
     count = 0
     start = ticks_ms()
     while count < CONFIRM_READS:
+        agv.check_stop_button()
         r = agv.read_line_sensor()
         count = count + 1 if not (r[0] or r[3]) else 0
         agv.reverse_follow_line(BACKWARD_SPEED)
@@ -95,6 +98,7 @@ def drive_to_junction(agv, drive):
     seen_left = seen_right = False
     start = ticks_ms()
     while True:
+        agv.check_stop_button()
         r = agv.read_line_sensor()
         s = sides(r)
         if s:
@@ -117,6 +121,7 @@ def follow_to_end(agv):
     count = 0
     start = ticks_ms()
     while count < CONFIRM_READS:
+        agv.check_stop_button()
         r = agv.read_line_sensor()
         if not any(r) or all(r):
             count += 1
@@ -137,6 +142,7 @@ def drive_to_depot(agv):
 
     agv.forward(FORWARD_SPEED)
     while True:
+        agv.check_stop_button()
         readings = agv.read_line_sensor()
         detected = sides(readings)
 
@@ -174,6 +180,7 @@ def recheck(agv, mission, seen):
     start = ticks_ms()
     while seen != expected and ticks_diff(ticks_ms(), start) < RECHECK_MS:
         sleep_ms(10)
+        agv.check_stop_button()
         s = sides(agv.read_line_sensor())
         if s and s != seen:
             seen = "both"
@@ -193,6 +200,7 @@ def pass_junction(agv):
     count = 0
     start = ticks_ms()
     while count < CONFIRM_READS:
+        agv.check_stop_button()
         r = agv.read_line_sensor()
         count = count + 1 if not (r[0] or r[3]) else 0
         check_timeout(agv, start, "the outer sensors to clear")
@@ -208,21 +216,24 @@ def turn_around(agv, back_up=True):
         agv.backward(BACKWARD_SPEED)   # no line under the sensors at a pickup end: keep reversing
         start = ticks_ms()
         while ticks_diff(ticks_ms(), start) < TURN_AROUND_BACK_MS:
+            agv.check_stop_button()
             agv.reverse_follow_line(BACKWARD_SPEED)
             sleep_ms(10)
     print("turn around: spinning (blind)")
     agv.turn("left", TURN_AROUND_SPEED)
-    sleep(TURN_AROUND_BLIND_TIME)
+    agv.interruptible_sleep(int(TURN_AROUND_BLIND_TIME * 1000))
     start = ticks_ms()
     try:
         # No sleep in these two loops: spinning fast, the middle sensors are only both on
         # the line for a moment, so poll as fast as possible
         print("turn around: waiting for middle sensors to leave the line")
         while agv.centred_on_line():
+            agv.check_stop_button()
             if ticks_diff(ticks_ms(), start) > TURN_AROUND_TIMEOUT_MS:
                 raise RuntimeError("Turn around timeout (never left the line)")
         print("turn around: off the line, looking for it again")
         while not agv.centred_on_line():
+            agv.check_stop_button()
             if ticks_diff(ticks_ms(), start) > TURN_AROUND_TIMEOUT_MS:
                 raise RuntimeError("Turn around timeout (never found the line)")
         print("turn around: done, back on the line")
@@ -241,6 +252,7 @@ def reverse_out_of_depot(agv):
     agv.backward(BACKWARD_SPEED)   # reverse_follow_line keeps the last command on the depot bar
     start = ticks_ms()
     while ticks_diff(ticks_ms(), start) < DEPOT_BACKWARDS_TIME * 1000:
+        agv.check_stop_button()
         agv.reverse_follow_line(BACKWARD_SPEED)
         sleep_ms(10)
     agv.stop()
@@ -248,7 +260,7 @@ def reverse_out_of_depot(agv):
 
 def stop_in_box(agv):
     agv.forward(FORWARD_SPEED)
-    sleep(CORNER_LATENCY)   # wheels over the start T
+    agv.interruptible_sleep(int(CORNER_LATENCY * 1000))   # wheels over the start T
     agv.stop()
 
 

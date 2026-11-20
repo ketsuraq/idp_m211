@@ -12,6 +12,10 @@ class AGV:
         """Create the hardware interface."""
         self.hw = create_hardware()
 
+        self.last_button_press = ticks_ms()
+        self.button_was_pressed = False
+        self.mission_running = False
+
     def forward(self, speed=FORWARD_SPEED):
         """Drive both motors forward at ``speed`` percent."""
         self.hw.motor1.Forward(speed)
@@ -58,6 +62,37 @@ class AGV:
         """Stop both drive motors."""
         self.hw.motor1.off()
         self.hw.motor2.off()
+
+    def button_clicked(self):
+        """Return True once for each debounced button press."""
+        pressed = self.hw.button.pressed()
+
+        if pressed and not self.button_was_pressed:
+            self.button_was_pressed = True
+
+            if ticks_diff(ticks_ms(), self.last_button_press) > 250:
+                self.last_button_press = ticks_ms()
+                return True
+
+        elif not pressed:
+            self.button_was_pressed = False
+
+        return False
+
+
+    def check_stop_button(self):
+        """Stop the robot if the button is pressed during a mission."""
+        if self.mission_running and self.button_clicked():
+            self.stop()
+            raise KeyboardInterrupt
+
+    def interruptible_sleep(self, milliseconds):
+        """Sleep while checking whether the stop button was pressed."""
+        start = ticks_ms()
+
+        while ticks_diff(ticks_ms(), start) < milliseconds:
+            self.check_stop_button()
+            sleep_ms(10)
 
     # assumes 0 is leftmost and 3 is rightmost
     def read_line_sensor(self):
@@ -141,6 +176,8 @@ class AGV:
         count = 0
         start = ticks_ms()
         while ticks_diff(ticks_ms(), start) < HALL_TIMEOUT_MS:
+            self.check_stop_button()
+
             v = hall.get_volts()
             if v >= HALL_GLITCH_V:   # below: loose-contact glitch, ignore it
                 if v > hall.zero + HALL_THRESHOLD_V:
@@ -153,7 +190,7 @@ class AGV:
                 last = pole
                 if count >= HALL_CONFIRM_READS:
                     return pole
-            sleep_ms(HALL_READ_MS)
+            self.interruptible_sleep(HALL_READ_MS)
         return None
 
     def read_ir_sensor(self):

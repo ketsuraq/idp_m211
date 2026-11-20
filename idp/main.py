@@ -10,32 +10,48 @@ main.py runs by itself when the Pico powers up, so the countdown gives time to l
 
 from agv import AGV
 from grab_test import AFTER_DROP, SCAN_PLAN, GrabMission, run
-from utime import sleep
+from utime import sleep, sleep_ms
 
 
 def main():
     agv = AGV()
-    mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
+    agv.stop()
 
-    try:
-        print("Starting from start box in:")
 
-        for s in range(3, 0, -1):
-            print(s)
-            sleep(1)
+    while True:
+        print("Press button to START")
 
-        run(agv, mission)
+        # Wait until the button is pressed
+        while not agv.button_clicked():
+            sleep_ms(20)
 
-    except KeyboardInterrupt:
-        print("Ctrl-C")
+        print("Starting mission")
 
-    except Exception as e:
-        print("Error:", e)
+        # Create a fresh mission every time
+        mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
 
-    finally:
-        agv.stop()
-        print("Finished in state", mission.state, "| checked:", mission.checked)
+        agv.mission_running = True
 
+        try:
+            run(agv, mission)
+
+        except KeyboardInterrupt:
+            print("Mission stopped by button")
+
+        except Exception as e:
+            print("Error:", e)
+
+        finally:
+            # Always stop motors
+            agv.stop()
+            agv.mission_running = False
+
+            print("Finished in state", mission.state)
+            print("Checked:", mission.checked)
+
+        # Don't allow a restart until the button is released
+        while agv.hw.button.pressed():
+            sleep_ms(20)
 
 if __name__ == "__main__":
     main()
