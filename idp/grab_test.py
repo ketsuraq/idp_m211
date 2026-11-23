@@ -23,7 +23,7 @@ constants.py, agv.py, hardware.py, VL53L0X.py.
 from agv import AGV
 from constants import *
 from line_following_test import (
-    back_off_line, check_timeout, drive_to_depot, drive_to_junction, drop, follow_to_end,
+    back_off_line, check_timeout, drive_to_depot, drive_to_junction, follow_to_end,
     pass_junction,
     recheck, reverse_out_of_depot, stop_in_box, turn_around, turn_at_junction,
 )
@@ -34,12 +34,16 @@ from utime import sleep, sleep_ms, ticks_diff, ticks_ms
 # Branches to check, side by side, in this order. Branch 1 is nearest the corner.
 # To check more, extend the lists or uncomment the left side.
 SCAN_PLAN = [
-    ("right", [1, 2, 3, 4, 5, 6]),
-    #("left", [1, 2, 3]),
+    ("left", [1, 2, 3, 4, 5, 6]),
+    #("right", [1, 2, 3, 4, 5, 6]),
 ]
 # After delivering a box: "home" = back to the start box (this test),
 # "continue" = carry on with the next unchecked branch.
 AFTER_DROP = "home"
+# A box is there but the hall sensor found no pole. Which depot it belongs in is unknown:
+#   "skip"    = no_pole_skip: leave it, treat the branch as empty, check the next one
+#   "nearest" = no_pole_nearest_depot: take it anyway, to the nearest depot on this side
+NO_POLE_ACTION = "nearest"
 
 # ---- distance sensor settings -----------------------------------------------------
 # While driving down a branch, a reading below this (mm) means there's a box in it.
@@ -57,7 +61,9 @@ class GrabMission(Mission):
     """Mission.on_job_done already sends the robot to the depot when a box is found and
     to the next pickup when one is empty. This changes three things:
       - no box on any branch -> "stop" (stay at the end of the last branch), not home
-      - box whose pole couldn't be read -> nearest depot (upper depot on the same side)
+      - box whose pole couldn't be read and was taken (NO_POLE_ACTION = "nearest")
+        -> nearest depot (upper depot on the same side). With "skip" the box isn't taken,
+        so the mission is told the branch was empty
       - after a drop, AFTER_DROP = "continue" goes on to the next unchecked branch"""
 
     def __init__(self, scan_plan, after_drop="home"):
@@ -120,13 +126,59 @@ def follow_branch(agv):
 
 
 # ---- jobs (placeholders until the mechanism and hall sensor are wired in) ---------
+def no_pole_skip(agv, station):
+    """No pole found: leave the box where it is (gripper stays open) and report the branch
+    as empty, so the mission moves on to the next one. Returns (polarity, taken)."""
+    print("COLLECT at", station, ": no pole, leaving the box")
+    return None, False
+
+
+def no_pole_nearest_depot(agv, station):
+    """No pole found: take the box anyway. GrabMission sends a box with no polarity to the
+    nearest depot on this side. Returns (polarity, taken)."""
+    print("COLLECT at", station, ": no pole, taking it to the nearest depot")
+    agv.close_gripper()
+    return None, True
+
+
+NO_POLE_HANDLERS = {"skip": no_pole_skip, "nearest": no_pole_nearest_depot}
+
+
 def collect(agv, station):
-    """Read the box's magnet, then pick it up (placeholder). Returns its polarity as the
-    map uses it: "N", "S", or None if no pole was found (-> nearest depot)."""
-    pole = agv.detect_pole()
-    print("COLLECT at", station, "pole:", pole, "(pick-up is a placeholder)")
-    agv.interruptible_sleep(1000)
-    return {"north": "N", "south": "S"}.get(pole)
+    """At the end of a branch with a box: read the box's magnet. If a pole is found, close
+    the gripper on it; if not, NO_POLE_ACTION decides. Returns (polarity, taken):
+    polarity is "N", "S" or None (as the map uses it), taken is True if the box is held."""
+    pole = {"north": "N", "south": "S"}.get(agv.detect_pole())
+    if pole is None:
+        return NO_POLE_HANDLERS[NO_POLE_ACTION](agv, station)
+    print("COLLECT at", station, "pole:", pole)
+    agv.close_gripper()
+    return pole, True
+
+
+def drop(agv):
+    """At the end of the depot line: open the gripper to let go of the box, then raise the
+    arm (it stays raised whenever there's no box). The robot then reverses out
+    (reverse_out_of_depot), leaving the box behind."""
+    print("DROP: opening gripper")
+    agv.open_gripper()
+    print("DROP: raising arm")
+    agv.lift()
+
+
+def back_out_and_lower(agv):
+    """After grabbing: back up (line following) for TURN_AROUND_BACK_MS, stop, then lower
+    the gripper. Same back-up as turn_around, so the spin afterwards starts from the same
+    place as at an empty branch."""
+    print("grab: backing out")
+    agv.backward(BACKWARD_SPEED)   # no line under the sensors at a pickup end: keep reversing
+    start = ticks_ms()
+    while ticks_diff(ticks_ms(), start) < TURN_AROUND_BACK_MS:
+        agv.reverse_follow_line(BACKWARD_SPEED)
+        sleep_ms(10)
+    agv.stop()
+    print("grab: lowering")
+    agv.lower()
 
 def leave_start_box(agv, mission):
     """
@@ -192,6 +244,8 @@ def leave_start_box(agv, mission):
 def run(agv, mission):
     """Drive the mission from the start box. Same as line_following_test.run, except
     that pickup branches are driven with follow_branch (notes whether there's a box)."""
+    agv.lift()           # no box yet: arm raised
+    agv.open_gripper()   # and gripper open, ready to close on the first box
     start = ticks_ms()
     while ticks_diff(ticks_ms(), start) < START_FOLLOW_MS:   # get past the box edge
         agv.check_stop_button()
@@ -247,14 +301,18 @@ def run(agv, mission):
                 mission.on_line_end()
                 print("[%s] %s: %s" % (mission.state, mission.here,
                                        "box at %d mm" % mm if found else "empty"))
-                polarity = collect(agv, mission.here) if found else None
-                action = mission.on_job_done(polarity, box_found=found)
+                polarity, taken = collect(agv, mission.here) if found else (None, False)
+                action = mission.on_job_done(polarity, box_found=taken)
                 if action == "stop":
-                    print("No box on any branch in SCAN_PLAN: stopping")
+                    print("No box taken on any branch in SCAN_PLAN: stopping")
                     agv.stop()
                     return
                 print("[%s] at %s -> turn around" % (mission.state, mission.here))
-                turn_around(agv, back_up=True)
+                if taken:   # holding the box: back out, lower, then spin
+                    back_out_and_lower(agv)
+                    turn_around(agv, back_up=False)
+                else:
+                    turn_around(agv, back_up=True)
                 mission.heading = OPPOSITE[mission.heading]   # facing back the way it came
                 out_of_pickup = True
 

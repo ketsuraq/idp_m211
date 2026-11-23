@@ -1,11 +1,11 @@
 """Shared configuration values for AGV control."""
 
 # Motor speed ceilings.
-FORWARD_SPEED = 70
+FORWARD_SPEED = 80
 BACKWARD_SPEED = FORWARD_SPEED
-TURN_SPEED = FORWARD_SPEED * 0.8
-CORRECTION_DIFF = FORWARD_SPEED * 0.8
-LEFT_SPEED_MULTIPLIER = 1.05   # left wheel is weaker: every left wheel speed is multiplied by this
+TURN_SPEED = 60
+CORRECTION_DIFF = 50
+LEFT_SPEED_MULTIPLIER = 1   # left wheel is weaker: every left wheel speed is multiplied by this
 
 TURN_TIME = 45 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
 
@@ -27,10 +27,10 @@ TURN_TIMEOUT_MS = 6000       # a junction turn that never finds the new line
 # Start box: line follow this long before looking for junctions (gets past the box edge)
 START_FOLLOW_MS = 2000
 
-# Turning around at the end of a branch, instead of reversing out (see docs/turnaround_testcan you change the backwards from depot logic to be the hard.md)
+# Turning around at the end of a branch, instead of reversing out (see docs/turnaround_test.md)
 TURN_AROUND_BACK_MS = 50000 / FORWARD_SPEED            # pickups only: back up (line following) this long first
-TURN_AROUND_SPEED = TURN_SPEED * 1.8   # spin at double speed
-TURN_AROUND_BLIND_TIME = TURN_TIME * 2.4 / 2   # blind part of the spin, halved for the double speed
+TURN_AROUND_SPEED = TURN_SPEED * 2   # spin at double speed
+TURN_AROUND_BLIND_TIME = TURN_TIME * 2.6 / 2   # blind part of the spin, halved for the double speed
 TURN_AROUND_TIMEOUT_MS = 30000       # keep spinning to search for the line this long before giving up
 
 DEPOT_GAP_MS = 100000 / FORWARD_SPEED 
@@ -39,12 +39,16 @@ BETWEEN_PICKUP_BACK_MS = 20000 / FORWARD_SPEED
 START_EXIT_IGNORE_MS = 2000
 
 
+# Start/stop button
+BUTTON_DEBOUNCE_MS = 200    # presses within this long of the last accepted one are ignored (contact bounce).
+                            # Too low = one press can toggle twice; too high = a quick second press is missed
+
+
 # Hall sensor (DRV5055A2) for the box's magnet polarity
 HALL_ZERO_READS = 50        # readings taken at startup (no magnet) to find the zero voltage (median)
-HALL_DEFAULT_ZERO_V = 1.89  # zero used if every startup reading was a glitch (sensor unplugged?)
-HALL_THRESHOLD_V = 0.12     # change from zero that counts as a pole. Noise is ~±0.03 V; lower = picks up
-                            # weaker magnets but risks noise, higher = misses weak ones (weakest pole is +0.15 V)
-HALL_GLITCH_V = 0.15        # readings below this are loose-contact glitches and are ignored
+HALL_THRESHOLD_V = 0.2      # change from zero that counts as a pole. Noise is ~±0.03 V; lower = picks up
+                            # weaker magnets but risks noise, higher = misses weak ones (one pole was
+                            # measured at only 0.15 V from zero, which this would miss)
 HALL_CONFIRM_READS = 5      # same pole this many readings in a row before trusting it
 HALL_READ_MS = 10           # time between readings
 HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
@@ -53,3 +57,11 @@ HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
 # IR receiver (traffic light). Green is a series of lows of about 74-85 ms (measured).
 IR_LOW_HOLD_MS = 60         # the pin must stay low this long to count as the green signal
 IR_SAMPLE_MS = 10           # time between reads while waiting
+
+# Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
+# agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
+HEIGHT_DOWN_ANGLE = 120         # height servo: gripper lowered to box level
+HEIGHT_UP_ANGLE = 60          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
+GRIPPER_OPEN_ANGLE = 150        # gripper servo: jaws open, wide enough to go round the box
+GRIPPER_CLOSED_ANGLE = 80     # gripper servo: holding the box. Too far may strain the servo or crush the box
+SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time

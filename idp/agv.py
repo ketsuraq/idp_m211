@@ -12,10 +12,14 @@ class AGV:
         """Create the hardware interface."""
         self.hw = create_hardware()
 
+<<<<<<< HEAD
         self.last_button_press = ticks_ms()
         self.button_was_pressed = False
         self.mission_running = False
 
+=======
+    # ---- drive motors --------------------------------------------------------------
+>>>>>>> 5014a86 (grab test coode all)
     def forward(self, speed=FORWARD_SPEED):
         """Drive both motors forward at ``speed`` percent."""
         self.hw.motor1.Forward(speed)
@@ -63,6 +67,7 @@ class AGV:
         self.hw.motor1.off()
         self.hw.motor2.off()
 
+<<<<<<< HEAD
     def button_clicked(self):
         """Return True once for each debounced button press."""
         pressed = self.hw.button.pressed()
@@ -94,6 +99,9 @@ class AGV:
             self.check_stop_button()
             sleep_ms(10)
 
+=======
+    # ---- line sensors and line following -------------------------------------------
+>>>>>>> 5014a86 (grab test coode all)
     # assumes 0 is leftmost and 3 is rightmost
     def read_line_sensor(self):
         """Return a list of readings from all 4 line sensors."""
@@ -103,10 +111,6 @@ class AGV:
             self.hw.line3.get_value(),
             self.hw.line4.get_value()
         ]
-
-    def read_distance_sensor(self):
-        """Return the current distance reading in millimeters from the VL53L0X sensor."""
-        return self.hw.distance_sensor.value()
 
     def centred_on_line(self):
         """Check only the two middle line sensors."""
@@ -167,6 +171,16 @@ class AGV:
 
         return config
 
+    # ---- other sensors -------------------------------------------------------------
+    def read_distance_sensor(self):
+        """Return the current distance reading in millimeters from the VL53L0X sensor."""
+        return self.hw.distance_sensor.value()
+
+    def read_ir_sensor(self):
+        """Return True while the IR receiver sees the traffic light's signal.
+        The receiver is active-low: its output pin goes low when it sees the signal."""
+        return self.hw.ir.get_value() == 0
+
     def detect_pole(self):
         """Call at the box. Returns "south" or "north" once
         the same pole is seen HALL_CONFIRM_READS readings in a row, HALL_READ_MS apart, or
@@ -179,22 +193,43 @@ class AGV:
             self.check_stop_button()
 
             v = hall.get_volts()
-            if v >= HALL_GLITCH_V:   # below: loose-contact glitch, ignore it
-                if v > hall.zero + HALL_THRESHOLD_V:
-                    pole = "south"
-                elif v < hall.zero - HALL_THRESHOLD_V:
-                    pole = "north"
-                else:
-                    pole = None
-                count = count + 1 if pole is not None and pole == last else (1 if pole else 0)
-                last = pole
-                if count >= HALL_CONFIRM_READS:
-                    return pole
-            self.interruptible_sleep(HALL_READ_MS)
+            pole = hall.pole_of(v)
+            count = count + 1 if pole is not None and pole == last else (1 if pole else 0)
+            last = pole
+            if count >= HALL_CONFIRM_READS:
+                return pole
+            sleep_ms(HALL_READ_MS)
         return None
 
-    def read_ir_sensor(self):
-        """Return True while the IR receiver sees the traffic light's signal.
-        The receiver is active-low: its output pin goes low when it sees the signal."""
-        return self.hw.ir.get_value() == 0
+    # ---- servos (gripper mechanism) ------------------------------------------------
+    def lower(self):
+        """Lower the gripper to box level."""
+        self.hw.height_servo.set_angle(HEIGHT_DOWN_ANGLE)
+        sleep_ms(SERVO_MOVE_MS)
 
+    def lift(self):
+        """Raise the gripper to the carrying height."""
+        self.hw.height_servo.set_angle(HEIGHT_UP_ANGLE)
+        sleep_ms(SERVO_MOVE_MS)
+
+    def open_gripper(self):
+        """Open the jaws."""
+        self.hw.gripper_servo.set_angle(GRIPPER_OPEN_ANGLE)
+        sleep_ms(SERVO_MOVE_MS)
+
+    def close_gripper(self):
+        """Close the jaws on the box."""
+        self.hw.gripper_servo.set_angle(GRIPPER_CLOSED_ANGLE)
+        sleep_ms(SERVO_MOVE_MS)
+
+    def grab(self):
+        """At the box: open, lower, close on it, lift it."""
+        self.open_gripper()
+        self.close_gripper()
+        self.lift()
+
+    def release(self):
+        """At the depot: lower the box, let go, lift the empty gripper."""
+        self.lower()
+        self.open_gripper()
+        self.lift()
