@@ -12,14 +12,10 @@ class AGV:
         """Create the hardware interface."""
         self.hw = create_hardware()
 
-<<<<<<< HEAD
         self.last_button_press = ticks_ms()
         self.button_was_pressed = False
         self.mission_running = False
 
-=======
-    # ---- drive motors --------------------------------------------------------------
->>>>>>> 5014a86 (grab test coode all)
     def forward(self, speed=FORWARD_SPEED):
         """Drive both motors forward at ``speed`` percent."""
         self.hw.motor1.Forward(speed)
@@ -67,7 +63,6 @@ class AGV:
         self.hw.motor1.off()
         self.hw.motor2.off()
 
-<<<<<<< HEAD
     def button_clicked(self):
         """Return True once for each debounced button press."""
         pressed = self.hw.button.pressed()
@@ -99,9 +94,6 @@ class AGV:
             self.check_stop_button()
             sleep_ms(10)
 
-=======
-    # ---- line sensors and line following -------------------------------------------
->>>>>>> 5014a86 (grab test coode all)
     # assumes 0 is leftmost and 3 is rightmost
     def read_line_sensor(self):
         """Return a list of readings from all 4 line sensors."""
