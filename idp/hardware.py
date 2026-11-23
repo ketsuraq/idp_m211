@@ -1,6 +1,6 @@
 # Hardware initialization and management
 from machine import ADC, Pin, PWM, I2C
-from utime import sleep_ms, ticks_diff, ticks_ms
+from utime import sleep_ms
 from constants import *
 from VL53L0X import VL53L0X   # plain import: hardware.py is a top-level module, not a package
 
@@ -49,27 +49,9 @@ class Ir:
 
 
 class Button:
-    def __init__(self, digitalPin: int, on_stop=None):
-        """Start/stop push button wired to GND (internal pull-up, so it reads 0 when pressed).
-
-        ``running`` starts True. Every press flips it. The flip happens in an interrupt,
-        so it works even while the main code is stuck in a loop or a sleep. When a press
-        flips it to False, ``on_stop`` is called straight away (used to cut the motors)."""
-        self.running = True
-        self.on_stop = on_stop
-        self._last_press = ticks_ms()
-        self.sensor = Pin(digitalPin, Pin.IN, Pin.PULL_UP)
-        self.sensor.irq(trigger=Pin.IRQ_FALLING, handler=self._pressed)
-
-    def _pressed(self, pin):
-        """Interrupt handler: runs on each falling edge (button pushed down)."""
-        now = ticks_ms()
-        if ticks_diff(now, self._last_press) < BUTTON_DEBOUNCE_MS:
-            return   # contact bounce from a press we already counted
-        self._last_press = now
-        self.running = not self.running
-        if not self.running and self.on_stop is not None:
-            self.on_stop()
+    def __init__(self, digitalPin: int):
+        """Push button wired to GND (internal pull-up: reads 0 when pressed)."""
+        self.sensor = Pin(digitalPin, Pin.IN, Pin.PULL_DOWN)
 
     def is_pressed(self):
         """Return True while the button is held down (raw pin read, no toggling)."""
@@ -138,6 +120,7 @@ class Hardware:
         self.height_servo = height_servo
         self.gripper_servo = gripper_servo
         self.button = button
+
 class DistanceSensor:
     def __init__(self, id: int, sda_pin: int, scl_pin: int):
         """Create a distance sensor using the VL53L0X module."""
@@ -167,3 +150,4 @@ def create_hardware():
         gripper_servo=Servo(13),  #Pin 13
         button=Button(27)  #GP27, wired to GND
     )
+            

@@ -49,7 +49,7 @@ NO_POLE_ACTION = "nearest"
 # While driving down a branch, a reading below this (mm) means there's a box in it.
 # The robot doesn't stop for it, it only notes it. Higher = sees the box from further
 # away, but is more likely to be set off by something else (e.g. the end wall).
-BOX_DETECT_MM = 150
+
 # The reading must be below BOX_DETECT_MM this many times in a row, so a single bad
 # reading doesn't count as a box. Higher = fewer false boxes, but a box seen only
 # briefly might be missed.

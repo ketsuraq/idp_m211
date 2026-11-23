@@ -1,21 +1,21 @@
 """Shared configuration values for AGV control."""
 
 # Motor speed ceilings.
-FORWARD_SPEED = 80
+FORWARD_SPEED = 70
 BACKWARD_SPEED = FORWARD_SPEED
 TURN_SPEED = 60
 CORRECTION_DIFF = 50
 LEFT_SPEED_MULTIPLIER = 1   # left wheel is weaker: every left wheel speed is multiplied by this
 
-TURN_TIME = 45 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
+TURN_TIME = 55 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
 
 APPROACH_SPEED = 50
 APPROACH_TIME = 1
 
-CORNER_LATENCY = 51 / FORWARD_SPEED  # Time to walk forward after a corner before starting to turn to account for difference in position of wheel and sensors
+CORNER_LATENCY = 55 / FORWARD_SPEED  # Time to walk forward after a corner before starting to turn to account for difference in position of wheel and sensors
 
 # Depot constants
-DEPOT_CORNER_LATENCY = 40 / FORWARD_SPEED  # same, but at the depot junctions
+DEPOT_CORNER_LATENCY = 65 / FORWARD_SPEED  # same, but at the depot junctions
 DEPOT_BACKWARDS_TIME = 35 / BACKWARD_SPEED  # back up this far after dropping off a pickup, then turn right or left straight away
 
 # Junction detection
@@ -23,6 +23,7 @@ CONFIRM_READS = 3            # a junction must show on this many reads in a row
 RECHECK_MS = 400             # junction not as expected: keep going this long, re-reading
 LEG_TIMEOUT_MS = 20000       # nothing found for this long = lost
 TURN_TIMEOUT_MS = 6000       # a junction turn that never finds the new line
+TURN_ALIGN_SETTLE_MS = 75   # keep turning after the middle sensors confirm the new line
 
 # Start box: line follow this long before looking for junctions (gets past the box edge)
 START_FOLLOW_MS = 2000
@@ -30,7 +31,7 @@ START_FOLLOW_MS = 2000
 # Turning around at the end of a branch, instead of reversing out (see docs/turnaround_test.md)
 TURN_AROUND_BACK_MS = 50000 / FORWARD_SPEED            # pickups only: back up (line following) this long first
 TURN_AROUND_SPEED = TURN_SPEED * 2   # spin at double speed
-TURN_AROUND_BLIND_TIME = TURN_TIME * 2.6 / 2   # blind part of the spin, halved for the double speed
+TURN_AROUND_BLIND_TIME = TURN_TIME * 3.0 / 2   # blind part of the spin, halved for the double speed
 TURN_AROUND_TIMEOUT_MS = 30000       # keep spinning to search for the line this long before giving up
 
 DEPOT_GAP_MS = 100000 / FORWARD_SPEED 
@@ -42,7 +43,7 @@ START_EXIT_IGNORE_MS = 2000
 # Start/stop button
 BUTTON_DEBOUNCE_MS = 200    # presses within this long of the last accepted one are ignored (contact bounce).
                             # Too low = one press can toggle twice; too high = a quick second press is missed
-
+BOX_DETECT_MM = 80
 
 # Hall sensor (DRV5055A2) for the box's magnet polarity
 HALL_ZERO_READS = 50        # readings taken at startup (no magnet) to find the zero voltage (median)
@@ -65,3 +66,4 @@ HEIGHT_UP_ANGLE = 60          # height servo: carrying. Rule: the box can't be l
 GRIPPER_OPEN_ANGLE = 150        # gripper servo: jaws open, wide enough to go round the box
 GRIPPER_CLOSED_ANGLE = 80     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time
+

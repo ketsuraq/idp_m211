@@ -65,12 +65,12 @@ class AGV:
 
     def button_clicked(self):
         """Return True once for each debounced button press."""
-        pressed = self.hw.button.pressed()
+        pressed = self.hw.button.is_pressed()
 
         if pressed and not self.button_was_pressed:
             self.button_was_pressed = True
 
-            if ticks_diff(ticks_ms(), self.last_button_press) > 250:
+            if ticks_diff(ticks_ms(), self.last_button_press) > BUTTON_DEBOUNCE_MS:
                 self.last_button_press = ticks_ms()
                 return True
 

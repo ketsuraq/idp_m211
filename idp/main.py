@@ -50,7 +50,7 @@ def main():
             print("Checked:", mission.checked)
 
         # Don't allow a restart until the button is released
-        while agv.hw.button.pressed():
+        while agv.hw.button.is_pressed():
             sleep_ms(20)
 
 if __name__ == "__main__":

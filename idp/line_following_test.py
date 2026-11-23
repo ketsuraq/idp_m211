@@ -52,15 +52,24 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
     agv.turn(direction, TURN_SPEED)
     agv.interruptible_sleep(int(TURN_TIME * 1000))
 
-    # 3. Keep turning until either middle sensor finds the new line
+    # 3. Keep turning until both middle sensors confirm the new line
     start = ticks_ms()
+    confirm_count = 0
     while True:
         agv.check_stop_button()
         readings = agv.read_line_sensor()
         if readings[1] and readings[2]:
-            break
+            confirm_count += 1
+            if confirm_count >= CONFIRM_READS:
+                break
+        else:
+            confirm_count = 0
         if ticks_diff(ticks_ms(), start) > TURN_TIMEOUT_MS:
             raise RuntimeError("Turn timed out without finding the line")
+        sleep_ms(10)
+
+    # 4. Keep doing the turn for 100 ms after confirmation, then stop
+    agv.interruptible_sleep(TURN_ALIGN_SETTLE_MS)
     agv.stop()
 
 def back_off_line(agv):
