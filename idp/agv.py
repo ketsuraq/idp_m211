@@ -194,6 +194,7 @@ class AGV:
         return None
 
     def read_ir_sensor(self):
-        """Return the IR traffic-light signal once that sensor is connected."""
-        pass
+        """Return True while the IR receiver sees the traffic light's signal.
+        The receiver is active-low: its output pin goes low when it sees the signal."""
+        return self.hw.ir.get_value() == 0
 

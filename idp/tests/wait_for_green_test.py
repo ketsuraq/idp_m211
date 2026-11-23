@@ -1,10 +1,11 @@
 """Test for waiting at the traffic light: stop until the green IR signal arrives.
 
-The IR receiver output is active-low. Red: stays high. Green: pulses, about 0.5 s low
-then 0.5 s high. wait_for_green() returns once the output has stayed low for
-IR_LOW_HOLD_MS, which a short glitch can't do.
+Runs the robot's own code: agv.read_ir_sensor() and line_following_test.wait_for_green().
+The IR receiver output is active-low. Red: stays high. Green: a series of short lows,
+measured at about 74-85 ms each. wait_for_green() returns once the output has stayed low
+for IR_LOW_HOLD_MS (constants.py), which a short glitch can't do.
 
-Wiring: receiver output on GP22 (physical pin 29).
+Wiring: receiver output on GP22 (physical pin 29). The motors are never driven here.
 
 What to check on the real traffic light:
   - red:   nothing is printed (it must NOT release)
@@ -13,50 +14,38 @@ What to check on the real traffic light:
 Press Ctrl-C to stop.
 """
 
-from machine import Pin
+from agv import AGV
+from line_following_test import wait_for_green
 from utime import sleep_ms, ticks_ms, ticks_diff
 
-IR_PIN = 22
-IR_LOW_HOLD_MS = 200     # a real low lasts ~500 ms, a glitch much less
-RED_GAP_MS = 2000        # no low for this long = the light is back to red (green gaps are ~500 ms)
+RED_GAP_MS = 2000        # no low for this long = the light is back to red (the gap between
+                         # green lows hasn't been measured; raise this if it reports red during green)
 SAMPLE_MS = 10
 
 
-def wait_for_green(ir):
-    """Block until the pin has stayed low (signal) for IR_LOW_HOLD_MS."""
-    low_since = None
-    while True:
-        if ir.value() == 0:                                   # low = signal
-            if low_since is None:
-                low_since = ticks_ms()                        # a low just started
-            elif ticks_diff(ticks_ms(), low_since) >= IR_LOW_HOLD_MS:
-                return                                        # held long enough: green
-        else:
-            low_since = None                                  # went high: start over
-        sleep_ms(SAMPLE_MS)
-
-
-def wait_for_red(ir):
+def wait_for_red(agv):
     """Block until there has been no low for RED_GAP_MS (the pulsing has stopped)."""
     last_low = ticks_ms()
     while ticks_diff(ticks_ms(), last_low) < RED_GAP_MS:
-        if ir.value() == 0:
+        if agv.read_ir_sensor():
             last_low = ticks_ms()
         sleep_ms(SAMPLE_MS)
 
 
 def main():
-    ir = Pin(IR_PIN, Pin.IN, Pin.PULL_UP)
+    agv = AGV()
     try:
         while True:
             start = ticks_ms()
             print("Waiting for green...")
-            wait_for_green(ir)
+            wait_for_green(agv)
             print("GO (after %d ms)" % ticks_diff(ticks_ms(), start))
-            wait_for_red(ir)
+            wait_for_red(agv)
             print("Signal stopped (red). Starting again.")
     except KeyboardInterrupt:
         print("Stopped")
+    finally:
+        agv.stop()
 
 
 if __name__ == "__main__":
