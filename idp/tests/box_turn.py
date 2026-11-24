@@ -84,50 +84,10 @@ def turn_with_box(agv, direction):
         sleep_ms(5)
     agv.stop()
 
-    # 3. Finish the turn: spin the same way until both middle sensors are on the line
-    print("box turn: lining up")
-    pivot_until_centred(agv, direction)
-
-    # 4. Settle: drive forward, pivot back whenever a middle sensor loses the line
-    print("box turn: settling")
-    side = direction        # side to pivot towards if both middle sensors lose the line
-    rounds = 0
-    start = ticks_ms()
-    agv.forward(BOX_SETTLE_SPEED)
-    centred_since = ticks_ms()
-    while ticks_diff(ticks_ms(), centred_since) < BOX_SETTLED_MS:
-        if ticks_diff(ticks_ms(), start) > BOX_SETTLE_TIMEOUT_MS:
-            agv.stop()
-            raise RuntimeError("box turn: didn't settle on the line")
-        r = agv.read_line_sensor()
-        if not (r[1] and r[2]):                 # a middle sensor lost the line
-            if r[1]:
-                side = "left"                   # only the left middle sees it: line is left
-            elif r[2]:
-                side = "right"
-            rounds += 1
-            pivot_until_centred(agv, side)      # neither sees it: use the last side known
-            agv.forward(BOX_SETTLE_SPEED)
-            centred_since = ticks_ms()
-        sleep_ms(5)
-    agv.stop()
-    print("box turn: done after %d corrections" % rounds)
-
-
-def pivot_until_centred(agv, direction):
-    """Pivot towards `direction` until both middle sensors see the line, then stop."""
-    agv.stop()
-    agv.turn(direction, BOX_PIVOT_SPEED)
-    start = ticks_ms()
     while True:
-        r = agv.read_line_sensor()
-        if r[1] and r[2]:
-            break
-        if ticks_diff(ticks_ms(), start) > BOX_ALIGN_TIMEOUT_MS:
-            agv.stop()
-            raise RuntimeError("box turn: couldn't line up with the line (pivoting %s)" % direction)
-        sleep_ms(5)
-    agv.stop()
+        agv.line_follow(correction=CORRECTION_DIFF+20)
+
+
 
 
 def main():
