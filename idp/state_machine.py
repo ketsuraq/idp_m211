@@ -45,9 +45,42 @@ RIGHT_SIDE = {
 CENTRE = {
     # T inside the start box. The robot starts below it (no line there) facing N.
     "start":          {"E": "right_box_edge", "W": "left_box_edge", "N": "box_top_edge"},
-    "box_top_edge":   {"S": "start", "N": "ramp_bottom", "E": None, "W": None},
-    "ramp_bottom":    {"S": "box_top_edge"},  # TODO: extend with the ramp / upper deck
+    # From the box edge one plain line runs N up the ramp (no junctions on it)
+    "box_top_edge":   {"S": "start", "N": "upper_1", "E": None, "W": None},
 }
+
+# ---------------------------------------------------------------------------
+# Upper deck: a spine running N from the top of the ramp, with 6 crossings (+)
+# and a T at the top. Every crossing and both arms of the T lead E and W to a
+# pickup point at a dead end. Numbering: upper_1 is nearest the ramp; the T is 7.
+#
+#        upper_left_7_end ----+---- upper_right_7_end      (T, upper_7)
+#                             |
+#        upper_left_6_end ----+---- upper_right_6_end
+#                            ...
+#        upper_left_1_end ----+---- upper_right_1_end      (upper_1)
+#                             |
+#                           ramp
+# ---------------------------------------------------------------------------
+UPPER_CROSSINGS = 6                   # number of + junctions; the T sits one above the last
+
+
+def _build_upper():
+    """Spine junctions upper_1..upper_7, plus the right-hand branch ends.
+    The left-hand ends come from _mirror, like the lower field."""
+    top = UPPER_CROSSINGS + 1
+    spine, right_ends = {}, {}
+    for i in range(1, top + 1):
+        node = "upper_%d" % i
+        below = "upper_%d" % (i - 1) if i > 1 else "box_top_edge"
+        spine[node] = {"S": below, "E": "upper_right_%d_end" % i, "W": "upper_left_%d_end" % i}
+        if i < top:                   # the T at the top has no line going on N
+            spine[node]["N"] = "upper_%d" % (i + 1)
+        right_ends["upper_right_%d_end" % i] = {"W": node}
+    return spine, right_ends
+
+
+UPPER_SPINE, UPPER_RIGHT = _build_upper()
 
 
 def _mirror(side):
@@ -65,6 +98,9 @@ GRAPH = {}
 GRAPH.update(CENTRE)
 GRAPH.update(RIGHT_SIDE)
 GRAPH.update(_mirror(RIGHT_SIDE))
+GRAPH.update(UPPER_SPINE)
+GRAPH.update(UPPER_RIGHT)
+GRAPH.update(_mirror(UPPER_RIGHT))
 
 # Where each box polarity is delivered (the upper depot of each colour)
 DEPOT_FOR = {"N": "left_depot_2_end", "S": "right_depot_2_end"}   # N -> red (left), S -> green (right)

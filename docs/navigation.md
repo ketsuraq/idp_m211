@@ -95,6 +95,6 @@ North-pole boxes go to the red (left) upper depot, south-pole to the green (righ
 
 Reversing out of a branch didn't work (the sensors trail behind the wheels when reversing, so corrections made it worse). Instead the robot backs up briefly, spins round and drives out forwards. Full details, tuning and caveats: [turnaround_test.md](turnaround_test.md).
 
-## 8. Adding the ramp
+## 8. The ramp and upper deck
 
-Add the ramp and upper-deck junctions to `GRAPH` in the same format, starting from `ramp_bottom`. Routes, turns and checks then work automatically.
+From `box_top_edge` one plain line runs N up the ramp to the upper deck's spine: 6 crossings (`upper_1` nearest the ramp to `upper_6`) and a T at the top (`upper_7`). Each one leads E and W to a pickup point, `upper_right_N_end` / `upper_left_N_end`. The spine is built by `_build_upper()` in `state_machine.py`; change `UPPER_CROSSINGS` if the count is wrong.
