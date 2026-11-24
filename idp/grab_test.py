@@ -152,6 +152,7 @@ def collect(agv, station):
     if pole is None:
         return NO_POLE_HANDLERS[NO_POLE_ACTION](agv, station)
     print("COLLECT at", station, "pole:", pole)
+    agv.show_polarity(pole)   # red = north, green = south, steady while the box is carried
     agv.close_gripper()
     return pole, True
 
@@ -162,6 +163,7 @@ def drop(agv):
     (reverse_out_of_depot), leaving the box behind."""
     print("DROP: opening gripper")
     agv.open_gripper()
+    agv.show_polarity(None)   # box released: red/green off
     print("DROP: raising arm")
     agv.lift()
 

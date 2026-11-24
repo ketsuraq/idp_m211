@@ -1,5 +1,5 @@
 # Hardware initialization and management
-from machine import ADC, Pin, PWM, I2C
+from machine import ADC, Pin, PWM, I2C, Timer
 from utime import sleep_ms
 from constants import *
 from VL53L0X import VL53L0X   # plain import: hardware.py is a top-level module, not a package
@@ -52,6 +52,7 @@ class Led:
         '''create an LED on output pin, active_high=True means a high pin lights it'''
         self.pin = Pin(pin, Pin.OUT)
         self.active_high = active_high
+        self.timer = None   # set while flashing in the background
         self.off()
 
     def on(self):
@@ -61,6 +62,24 @@ class Led:
     def off(self):
         '''led off'''
         self.pin.value(0 if self.active_high else 1)
+
+    def _tick(self, timer):
+        """Timer callback while flashing: flip the LED."""
+        self.pin.toggle()
+
+    def start_flashing(self, half_period_ms=AMBER_FLASH_MS):
+        """Flash in the background (a hardware timer, so the main loop is never blocked):
+        on for half_period_ms, then off for half_period_ms, until stop_flashing()."""
+        self.stop_flashing()
+        self.on()
+        self.timer = Timer(period=half_period_ms, mode=Timer.PERIODIC, callback=self._tick)
+
+    def stop_flashing(self):
+        """Stop flashing and switch the LED off."""
+        if self.timer is not None:
+            self.timer.deinit()
+            self.timer = None
+        self.off()
 
 
 

@@ -59,6 +59,9 @@ HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
 IR_LOW_HOLD_MS = 60         # the pin must stay low this long to count as the green signal
 IR_SAMPLE_MS = 10           # time between reads while waiting
 
+# Amber "in operation" light. Spec: the flash rate must suit human eye perception (check the handout).
+AMBER_FLASH_MS = 250        # half a flash cycle: 250 ms on, 250 ms off = 2 flashes a second
+
 # Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
 # agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
 HEIGHT_DOWN_ANGLE = 120         # height servo: gripper lowered to box level

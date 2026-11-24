@@ -193,6 +193,19 @@ class AGV:
             sleep_ms(HALL_READ_MS)
         return None
 
+    def show_polarity(self, pole):
+        """Light the LED for the box being carried: red for "N", green for "S".
+        Anything else (None) switches both off."""
+        if pole == "N":
+            self.hw.led_green.off()
+            self.hw.led_red.on()
+        elif pole == "S":
+            self.hw.led_red.off()
+            self.hw.led_green.on()
+        else:
+            self.hw.led_red.off()
+            self.hw.led_green.off()
+
     # ---- servos (gripper mechanism) ------------------------------------------------
     def lower(self):
         """Lower the gripper to box level."""

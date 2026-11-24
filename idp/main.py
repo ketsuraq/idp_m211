@@ -31,6 +31,7 @@ def main():
         mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
 
         agv.mission_running = True
+        agv.hw.led_amber.start_flashing()   # amber flashes while the mission runs
 
         try:
             run(agv, mission)
@@ -42,8 +43,10 @@ def main():
             print("Error:", e)
 
         finally:
-            # Always stop motors
+            # Always stop motors, and switch every LED off
             agv.stop()
+            agv.hw.led_amber.stop_flashing()
+            agv.show_polarity(None)
             agv.mission_running = False
 
             print("Finished in state", mission.state)
