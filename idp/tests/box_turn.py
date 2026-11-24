@@ -33,7 +33,7 @@ from utime import sleep, sleep_ms, ticks_diff, ticks_ms
 # forward driving, box goes less past the junction) but if it reaches ~90 the robot ends
 # parallel to the line and step 2 never finds it. Shorter = more forward driving and a
 # bigger final correction. Starts at the normal turn's blind time; time it on the track.
-BOX_TURN_TIME = TURN_TIME
+BOX_TURN_TIME = TURN_TIME/2
 BOX_TURN_SPEED = TURN_SPEED              # spin speed for step 1
 BOX_INTERCEPT_SPEED = FORWARD_SPEED * 0.6   # step 2 speed. Slower = stops closer to the line
 # Step 2 starts with this long driving forward blind (sensors ignored), so the old line or
@@ -71,7 +71,7 @@ def turn_with_box(agv, direction):
     # 2. Drive forward blind for BOX_FORWARD_MS, then until a middle sensor meets the new line
     print("box turn: driving forward")
     agv.forward(BOX_INTERCEPT_SPEED)
-    sleep_ms(BOX_FORWARD_MS)
+    #sleep_ms(BOX_FORWARD_MS)
     print("box turn: looking for the new line")
     start = ticks_ms()
     while True:

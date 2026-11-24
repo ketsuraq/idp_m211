@@ -31,15 +31,15 @@ class AGV:
             self.hw.motor1.Forward(speed)
             self.hw.motor2.Reverse(speed)
 
-    def correct(self, direction, speed=FORWARD_SPEED):
+    def correct(self, direction, speed=FORWARD_SPEED, correction = CORRECTION_DIFF):
         # goes to the left
         if direction == "left":
             self.hw.motor1.Forward(speed)
-            self.hw.motor2.Forward(speed+CORRECTION_DIFF)
+            self.hw.motor2.Forward(speed+correction)
 
         # goes to the right
         elif direction == "right":
-            self.hw.motor1.Forward(speed+CORRECTION_DIFF)
+            self.hw.motor1.Forward(speed+correction)
             self.hw.motor2.Forward(speed)
 
     def backward(self, speed=BACKWARD_SPEED):
