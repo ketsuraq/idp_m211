@@ -30,8 +30,7 @@ def main():
         # Create a fresh mission every time
         mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
 
-        agv.mission_running = True
-        agv.hw.led_amber.start_flashing()   # amber flashes while the mission runs
+        agv.mission_running = True   # run() starts the amber flashing
 
         try:
             run(agv, mission)
@@ -45,8 +44,7 @@ def main():
         finally:
             # Always stop motors, and switch every LED off
             agv.stop()
-            agv.hw.led_amber.stop_flashing()
-            agv.show_polarity(None)
+            agv.stop_mission_lights()   # run() already does this; kept in case run() never started
             agv.mission_running = False
 
             print("Finished in state", mission.state)

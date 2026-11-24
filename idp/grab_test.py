@@ -277,6 +277,16 @@ def go_up_ramp(agv, action):
 
 # ---- main loop --------------------------------------------------------------------
 def run(agv, mission):
+    """Run the mission with the LEDs on: amber flashes the whole time, and every LED is
+    switched off at the end, however it ends (finished, stop button or an error)."""
+    agv.start_mission_lights()
+    try:
+        _drive(agv, mission)
+    finally:
+        agv.stop_mission_lights()
+
+
+def _drive(agv, mission):
     """Drive the mission from the start box. Same as line_following_test.run, except
     that pickup branches are driven with follow_branch (notes whether there's a box)."""
     agv.lift()           # no box yet: arm raised

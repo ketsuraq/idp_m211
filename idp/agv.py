@@ -193,6 +193,17 @@ class AGV:
             sleep_ms(HALL_READ_MS)
         return None
 
+    # ---- LEDs ----------------------------------------------------------------------
+    def start_mission_lights(self):
+        """Mission starting: amber flashes in the background until stop_mission_lights()."""
+        self.show_polarity(None)
+        self.hw.led_amber.start_flashing(AMBER_FLASH_MS)
+
+    def stop_mission_lights(self):
+        """Mission over (finished, stopped or crashed): all LEDs off."""
+        self.hw.led_amber.stop_flashing()
+        self.show_polarity(None)
+
     def show_polarity(self, pole):
         """Light the LED for the box being carried: red for "N", green for "S".
         Anything else (None) switches both off."""
