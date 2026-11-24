@@ -47,6 +47,22 @@ class Ir:
         """Return the raw pin value: 0 when infrared is seen, 1 when it isn't (active-low)."""
         return self.sensor.value()
 
+class Led:
+    def __init__(self, pin:int, active_high: bool = True):
+        '''create an LED on output pin, active_high=True means a high pin lights it'''
+        self.pin = Pin(pin, Pin.OUT)
+        self.active_high = active_high
+        self.off()
+
+    def on(self):
+        '''light on led'''
+        self.pin.value(1 if self.active_high else 0)
+
+    def off(self):
+        '''led off'''
+        self.pin.value(0 if self.active_high else 1)
+
+
 
 class Button:
     def __init__(self, digitalPin: int):
