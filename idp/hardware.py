@@ -122,7 +122,7 @@ class Servo:
 
 
 class Hardware:
-    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir, distance_sensor: DistanceSensor, hall: Hall, height_servo: Servo, gripper_servo: Servo = None, button: Button = None):
+    def __init__(self, motor1: Motor, motor2: Motor, line1: Line, line2: Line, line3: Line, line4: Line, ir: Ir, distance_sensor: DistanceSensor, hall: Hall, height_servo: Servo, gripper_servo: Servo = None, button: Button = None, led_red: Led = None, led_green: Led = None, led_amber: Led = None):
         """Encapsulate the AGV's sensors."""
         self.motor1 = motor1
         self.motor2 = motor2
@@ -136,6 +136,9 @@ class Hardware:
         self.height_servo = height_servo
         self.gripper_servo = gripper_servo
         self.button = button
+        self.led_red = led_red
+        self.led_green = led_green
+        self.led_amber = led_amber
 
 class DistanceSensor:
     def __init__(self, id: int, sda_pin: int, scl_pin: int):
@@ -164,6 +167,9 @@ def create_hardware():
         hall=Hall(28), #GP28 / ADC2, Pin 34
         height_servo=Servo(15) , #Pin 15,
         gripper_servo=Servo(13),  #Pin 13
-        button=Button(27)  #GP27, wired to GND
+        button=Button(27),  #GP27, wired to GND
+        led_red=Led(16),  #Pin 12
+        led_green=Led(11),  #Pin 14
+        led_amber=Led(12)  #Pin 16
     )
             
