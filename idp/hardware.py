@@ -89,7 +89,7 @@ class Hall:
 
     def get_volts(self):
         """Return the sensor output in volts."""
-        return self.sensor.read_u16() * 3.3 / 65535
+        return self.sensor.read_u16() * 3 / 65535
 
     def pole_of(self, v):
         """Classify one reading ``v`` (volts): "north" if it is more than HALL_THRESHOLD_V

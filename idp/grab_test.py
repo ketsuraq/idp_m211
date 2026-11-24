@@ -177,8 +177,6 @@ def back_out_and_lower(agv):
         agv.reverse_follow_line(BACKWARD_SPEED)
         sleep_ms(10)
     agv.stop()
-    print("grab: lowering")
-    agv.lower()
 
 def leave_start_box(agv, mission):
     """
