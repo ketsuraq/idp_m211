@@ -168,8 +168,8 @@ def create_hardware():
         height_servo=Servo(15) , #Pin 15,
         gripper_servo=Servo(13),  #Pin 13
         button=Button(27),  #GP27, wired to GND
-        led_red=Led(16),  #Pin 12
-        led_green=Led(11),  #Pin 14
-        led_amber=Led(12)  #Pin 16
+        led_red=Led(12),  #Pin 16
+        led_green=Led(8),  #Pin 11
+        led_amber=Led(9)  #Pin 12
     )
             
