@@ -26,16 +26,22 @@ from line_following_test import (
     back_off_line, check_timeout, drive_to_depot, drive_to_junction, follow_to_end,
     pass_junction,
     recheck, reverse_out_of_depot, stop_in_box, turn_around, turn_at_junction,
+    wait_for_green,
 )
 from state_machine import DEPOT_FOR, FALLBACK_DEPOT, OPPOSITE, Mission, expected_sides
 from utime import sleep, sleep_ms, ticks_diff, ticks_ms
 
 # ---- test settings ----------------------------------------------------------------
-# Branches to check, side by side, in this order. Branch 1 is nearest the corner.
-# To check more, extend the lists or uncomment the left side.
+# Branches to check, side by side, in this order.
+#   "left" / "right":             lower pickups 1-6, 1 nearest the corner
+#   "upper_left" / "upper_right": upper deck pickups 1-7, 1 nearest the ramp, 7 = the top T.
+#                                 Going up the ramp waits in the box for the green light.
+# To check more, extend the lists or uncomment more sides.
 SCAN_PLAN = [
     ("left", [1, 2, 3, 4, 5, 6]),
     #("right", [1, 2, 3, 4, 5, 6]),
+    #("upper_left", [1, 2, 3, 4, 5, 6, 7]),
+    #("upper_right", [1, 2, 3, 4, 5, 6, 7]),
 ]
 # After delivering a box: "home" = back to the start box (this test),
 # "continue" = carry on with the next unchecked branch.
@@ -57,6 +63,19 @@ BOX_CONFIRM_READS = 2
 
 
 # ---- mission ----------------------------------------------------------------------
+def pickup_node(side, n):
+    """Map node for branch n on a SCAN_PLAN side: lower ones are "left_pickup_3_end",
+    upper deck ones are "upper_left_3_end"."""
+    if side.startswith("upper_"):
+        return "%s_%d_end" % (side, n)
+    return "%s_pickup_%d_end" % (side, n)
+
+
+def side_of(node):
+    """"left" or "right" for any pickup node, lower or upper deck."""
+    return "left" if "left_" in node else "right"
+
+
 class GrabMission(Mission):
     """Mission.on_job_done already sends the robot to the depot when a box is found and
     to the next pickup when one is empty. This changes three things:
@@ -67,7 +86,7 @@ class GrabMission(Mission):
       - after a drop, AFTER_DROP = "continue" goes on to the next unchecked branch"""
 
     def __init__(self, scan_plan, after_drop="home"):
-        pickups = ["%s_pickup_%d_end" % (side, n) for side, nums in scan_plan for n in nums]
+        pickups = [pickup_node(side, n) for side, nums in scan_plan for n in nums]
         Mission.__init__(self, pickups)
         self.after_drop = after_drop
         self.checked = []                  # branches driven down so far, for the log
@@ -81,8 +100,8 @@ class GrabMission(Mission):
                 return "stop"
             if box_found and polarity is None:   # pole unknown: nearest depot on this side
                 self.pickups.pop(0)
-                side = self.here.split("_")[0]   # "right" / "left"
-                self._go_to(side + "_depot_2_end", "TO_DEPOT")   # depot 2 is nearer the pickups
+                # same side's depot; depot 2 is nearer the pickups
+                self._go_to(side_of(self.here) + "_depot_2_end", "TO_DEPOT")
                 return self._leave_towards(self.remaining[0])
         elif self.state == "TO_DEPOT" and self.after_drop == "continue" and self.pickups:
             self.delivered += 1
@@ -240,6 +259,22 @@ def leave_start_box(agv, mission):
     agv.forward(FORWARD_SPEED)
 
 
+def go_up_ramp(agv, action):
+    """At the start T, heading for the ramp: end up over the T facing N, wait for the
+    traffic light, then drive clear of the T. The IR receiver faces the light from here.
+      action "straight": already facing N (first trip): drive the wheels onto the T
+      action "left"/"right": arrived from E/W: turn N (this leaves the wheels on the T)
+    The same stopping spot both ways, so the IR sees the light from the same place."""
+    if action == "straight":
+        stop_in_box(agv)
+    else:
+        turn_at_junction(agv, action, CORNER_LATENCY)
+    print("waiting for green")
+    wait_for_green(agv)
+    print("green: going up the ramp")
+    pass_junction(agv)   # clear the T's arms; the box edge is then the next junction
+
+
 # ---- main loop --------------------------------------------------------------------
 def run(agv, mission):
     """Drive the mission from the start box. Same as line_following_test.run, except
@@ -266,7 +301,11 @@ def run(agv, mission):
         if action == "stop":     # only reached at the start box on the way home
             stop_in_box(agv)
             return
-        if action == "straight":
+        if mission.must_wait_for_green():
+            # At the start T, about to go up the ramp: face N, wait for green, go.
+            # box_top_edge is then found as a normal junction, so it isn't miscounted.
+            go_up_ramp(agv, action)
+        elif action == "straight":
             pass_junction(agv)
 
         elif action in ("left", "right"):
@@ -291,7 +330,10 @@ def run(agv, mission):
                     sleep_ms(5)
                 agv.stop()
 
-            if out_of_pickup and mission.state == "TO_DEPOT":
+            # drive_to_depot finds the depot by the first long gap between junctions. From
+            # the upper deck the ramp is a long gap too, so there the map's junction count
+            # is used instead (the normal drive_to_junction below).
+            if out_of_pickup and mission.state == "TO_DEPOT" and not mission.here.startswith("upper_"):
                 looking_for_depot = True
         out_of_pickup = False
 

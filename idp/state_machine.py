@@ -262,6 +262,12 @@ class Mission:
     def expecting_line_end(self):
         return len(self.remaining) == 1 and is_dead_end(self.remaining[0])
 
+    def must_wait_for_green(self):
+        """True when the robot is at the start T and about to head N up the ramp: it must
+        face N there and wait for the traffic light. From the T, N only leads up the ramp,
+        so passing through the box (E<->W), coming down or going home never waits."""
+        return self.here == "start" and bool(self.remaining) and self.remaining[0] == "box_top_edge"
+
     def finished(self):
         return self.state in ("DONE", "ERROR")
 

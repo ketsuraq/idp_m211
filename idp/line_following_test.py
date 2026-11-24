@@ -280,6 +280,7 @@ def wait_for_green(agv):
     agv.stop()
     low_since = None
     while True:
+        agv.check_stop_button()                                   # the button still works while waiting
         if agv.read_ir_sensor():                                  # True = low = signal
             if low_since is None:
                 low_since = ticks_ms()                            # a low just started
