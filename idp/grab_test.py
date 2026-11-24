@@ -49,7 +49,7 @@ AFTER_DROP = "home"
 # A box is there but the hall sensor found no pole. Which depot it belongs in is unknown:
 #   "skip"    = no_pole_skip: leave it, treat the branch as empty, check the next one
 #   "nearest" = no_pole_nearest_depot: take it anyway, to the nearest depot on this side
-NO_POLE_ACTION = "nearest"
+NO_POLE_ACTION = "skip"   # don't carry a box whose pole can't be read
 
 # ---- distance sensor settings -----------------------------------------------------
 # While driving down a branch, a reading below this (mm) means there's a box in it.
