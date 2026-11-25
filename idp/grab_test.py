@@ -259,9 +259,9 @@ def leave_start_box(agv, mission):
     agv.forward(FORWARD_SPEED)
 
 
-def go_up_ramp(agv, action):
-    """At the start T, heading for the ramp: end up over the T facing N, wait for the
-    traffic light, then drive clear of the T. The IR receiver faces the light from here.
+def go_up_ramp(agv, action, wait_for_green_signal=True):
+    """At the start T, heading for the ramp: end up over the T facing N, optionally wait
+    for the traffic light, then drive clear of the T. The IR receiver faces the light here.
       action "straight": already facing N (first trip): drive the wheels onto the T
       action "left"/"right": arrived from E/W: turn N (this leaves the wheels on the T)
     The same stopping spot both ways, so the IR sees the light from the same place."""
@@ -269,24 +269,29 @@ def go_up_ramp(agv, action):
         stop_in_box(agv)
     else:
         turn_at_junction(agv, action, CORNER_LATENCY)
-    print("waiting for green")
-    wait_for_green(agv)
-    print("green: going up the ramp")
+    if wait_for_green_signal:
+        print("waiting for green")
+        wait_for_green(agv)
+        print("green: going up the ramp")
+    else:
+        print("IR wait skipped: going up the ramp")
     pass_junction(agv)   # clear the T's arms; the box edge is then the next junction
 
 
 # ---- main loop --------------------------------------------------------------------
-def run(agv, mission):
+def run(agv, mission, wait_for_green_signal=True, ramp_pickup_transition=None):
     """Run the mission with the LEDs on: amber flashes the whole time, and every LED is
-    switched off at the end, however it ends (finished, stop button or an error)."""
+    switched off at the end, however it ends (finished, stop button or an error).
+    Set wait_for_green_signal=False only for a controlled ramp test. An optional
+    ramp_pickup_transition handles direct transitions between ramp pickup branches."""
     agv.start_mission_lights()
     try:
-        _drive(agv, mission)
+        _drive(agv, mission, wait_for_green_signal, ramp_pickup_transition)
     finally:
         agv.stop_mission_lights()
 
 
-def _drive(agv, mission):
+def _drive(agv, mission, wait_for_green_signal=True, ramp_pickup_transition=None):
     """Drive the mission from the start box. Same as line_following_test.run, except
     that pickup branches are driven with follow_branch (notes whether there's a box)."""
     agv.lift()           # no box yet: arm raised
@@ -301,20 +306,24 @@ def _drive(agv, mission):
     action = mission.on_junction(recheck(agv, mission, seen))
     out_of_pickup = False        # True right after turning around at a pickup branch
     looking_for_depot = False
+    ramp_pickup_ready = False
 
     while True:
         agv.check_stop_button()
 
-        print("[%s] at %s -> %s" % (mission.state, mission.here, action))
         out_of_branch = False    # this pass turned from a branch onto the main line
+        if ramp_pickup_ready:
+            ramp_pickup_ready = False
+            action = None
+        else:
+            print("[%s] at %s -> %s" % (mission.state, mission.here, action))
 
         if action == "stop":     # only reached at the start box on the way home
             stop_in_box(agv)
             return
         if mission.must_wait_for_green():
-            # At the start T, about to go up the ramp: face N, wait for green, go.
-            # box_top_edge is then found as a normal junction, so it isn't miscounted.
-            go_up_ramp(agv, action)
+            # At the start T, face N and pass the box_top_edge as a normal junction.
+            go_up_ramp(agv, action, wait_for_green_signal)
         elif action == "straight":
             pass_junction(agv)
 
@@ -359,14 +368,21 @@ def _drive(agv, mission):
                     print("No box taken on any branch in SCAN_PLAN: stopping")
                     agv.stop()
                     return
-                print("[%s] at %s -> turn around" % (mission.state, mission.here))
-                if taken:   # holding the box: back out, lower, then spin
-                    back_out_and_lower(agv)
-                    turn_around(agv, back_up=False)
+                transitioned = False
+                if not taken and ramp_pickup_transition is not None:
+                    transitioned = ramp_pickup_transition(agv, mission)
+                if transitioned:
+                    ramp_pickup_ready = True
+                    out_of_pickup = False
                 else:
-                    turn_around(agv, back_up=True)
-                mission.heading = OPPOSITE[mission.heading]   # facing back the way it came
-                out_of_pickup = True
+                    print("[%s] at %s -> turn around" % (mission.state, mission.here))
+                    if taken:   # holding the box: back out, lower, then spin
+                        back_out_and_lower(agv)
+                        turn_around(agv, back_up=False)
+                    else:
+                        turn_around(agv, back_up=True)
+                    mission.heading = OPPOSITE[mission.heading]   # facing back the way it came
+                    out_of_pickup = True
 
             else:   # depot: drop, reverse out, turn onto the main line
                 follow_to_end(agv)   # depot branches: no box check
@@ -398,6 +414,8 @@ def _drive(agv, mission):
             else:
                 raise RuntimeError("No depot junction in route")
             looking_for_depot = False
+        elif ramp_pickup_ready:
+            continue
         else:
             seen = drive_to_junction(agv, lambda: agv.follow_line(FORWARD_SPEED))
 
