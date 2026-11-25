@@ -5,7 +5,8 @@ main.py runs by itself when the Pico powers up, so the countdown gives time to l
 """
 
 from agv import AGV
-from competition_1 import CompetitionMission, run
+# from competition_1 import CompetitionMission, run
+from grab_test import AFTER_DROP, SCAN_PLAN, GrabMission, run
 from utime import sleep, sleep_ms
 
 
@@ -24,7 +25,8 @@ def main():
         print("Starting mission")
 
         # Create a fresh mission every time (this also starts its clock)
-        mission = CompetitionMission()
+        # mission = CompetitionMission()
+        mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
 
         agv.mission_running = True   # run() starts the amber flashing
 
@@ -52,3 +54,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

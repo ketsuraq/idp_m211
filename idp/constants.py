@@ -7,7 +7,7 @@ TURN_SPEED = 60
 CORRECTION_DIFF = 50
 LEFT_SPEED_MULTIPLIER = 1   # left wheel is weaker: every left wheel speed is multiplied by this
 
-TURN_TIME = 55 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
+TURN_TIME = 60 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
 
 APPROACH_SPEED = 50
 APPROACH_TIME = 1
@@ -31,7 +31,7 @@ START_FOLLOW_MS = 2000
 # Turning around at the end of a branch, instead of reversing out (see docs/turnaround_test.md)
 TURN_AROUND_BACK_MS = 50000 / FORWARD_SPEED            # pickups only: back up (line following) this long first
 TURN_AROUND_SPEED = TURN_SPEED * 2   # spin at double speed
-TURN_AROUND_BLIND_TIME = TURN_TIME * 3.0 / 2   # blind part of the spin, halved for the double speed
+TURN_AROUND_BLIND_TIME = TURN_TIME * 2.6 / 2   # blind part of the spin, halved for the double speed
 TURN_AROUND_TIMEOUT_MS = 30000       # keep spinning to search for the line this long before giving up
 
 DEPOT_GAP_MS = 100000 / FORWARD_SPEED 
@@ -67,9 +67,10 @@ AMBER_FLASH_MS = 500        # half a flash cycle: 500 ms on, 500 ms off = 1 flas
 
 # Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
 # agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
-HEIGHT_DOWN_ANGLE = 135         # height servo: gripper lowered to box level
-HEIGHT_UP_ANGLE = 135          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
-GRIPPER_OPEN_ANGLE = 80        # gripper servo: jaws open, wide enough to go round the box
-GRIPPER_CLOSED_ANGLE = 180     # gripper servo: holding the box. Too far may strain the servo or crush the box
+HEIGHT_DOWN_ANGLE = 130         # height servo: gripper lowered to box level
+HEIGHT_UP_ANGLE = 125          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
+GRIPPER_OPEN_ANGLE = 100        # gripper servo: jaws open, wide enough to go round the box
+GRIPPER_CLOSED_ANGLE = 190     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time
+
 
