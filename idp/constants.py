@@ -67,9 +67,9 @@ AMBER_FLASH_MS = 500        # half a flash cycle: 500 ms on, 500 ms off = 1 flas
 
 # Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
 # agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
-HEIGHT_DOWN_ANGLE = 120         # height servo: gripper lowered to box level
-HEIGHT_UP_ANGLE = 60          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
-GRIPPER_OPEN_ANGLE = 150        # gripper servo: jaws open, wide enough to go round the box
-GRIPPER_CLOSED_ANGLE = 80     # gripper servo: holding the box. Too far may strain the servo or crush the box
+HEIGHT_DOWN_ANGLE = 135         # height servo: gripper lowered to box level
+HEIGHT_UP_ANGLE = 135          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
+GRIPPER_OPEN_ANGLE = 80        # gripper servo: jaws open, wide enough to go round the box
+GRIPPER_CLOSED_ANGLE = 180     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time
 

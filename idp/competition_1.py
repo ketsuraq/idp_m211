@@ -110,10 +110,15 @@ class CompetitionMission(Mission):
         on_depot_done()                      -> "reverse" (reverse out, go to the next place)
     """
 
-    def __init__(self, clock=None):
+    def __init__(self, clock=None, sides=SIDES, one_pass=False):
+        """sides: which of SIDES to scan, in order (the tests pass a subset).
+        one_pass: True = scan each side once, then go home (tests); False = keep cycling
+        until HOME_AT_S (competition)."""
         start = ticks_ms()
         # seconds since the start; replaceable for a dry run
         self.clock = clock or (lambda: ticks_diff(ticks_ms(), start) / 1000)
+        self.sides = sides
+        self.one_pass = one_pass
         self.delivered = 0
         self.polarity = None          # pole of the box being carried ("N", "S" or None)
         self.carrying = False
@@ -126,10 +131,19 @@ class CompetitionMission(Mission):
         self.remaining = route("start", branch_node(self.side, 1))
 
     # ---- which branch next ---------------------------------------------------------
+    def _side_done(self):
+        """A side is finished (box delivered, or nothing to take): on to the next side, or
+        home if this is a one-pass test and the last side has been done."""
+        if self.one_pass and self.side_index == len(self.sides) - 1:
+            print("all sides scanned once: going home")
+            self._go_to("start", "TO_HOME")
+        else:
+            self._start_next_side()
+
     def _start_next_side(self):
-        """Move on to the next side in SIDES (wrapping round) and head for its branch 1."""
-        self.side_index = (self.side_index + 1) % len(SIDES)
-        self.side, self.branches = SIDES[self.side_index]
+        """Move on to the next side in self.sides (wrapping round) and head for its branch 1."""
+        self.side_index = (self.side_index + 1) % len(self.sides)
+        self.side, self.branches = self.sides[self.side_index]
         self.scan = "out"             # "out" (1 -> N), "back" (N-1 -> 1), "fetch" (go and get one)
         self.n = 1                    # branch being checked
         self.seen_out = []            # branches with an unread box, on the way out
@@ -198,7 +212,7 @@ class CompetitionMission(Mission):
                 self._go_to(branch_node(self.side, nxt), "TO_PICKUP")
             else:
                 print("nothing to take on", self.side)
-                self._start_next_side()
+                self._side_done()
         self._check_time()
         return self._leave_towards(self.remaining[0])
 
@@ -209,7 +223,7 @@ class CompetitionMission(Mission):
         if self.home_decided or self.clock() >= HOME_AT_S:
             self._go_to("start", "TO_HOME")
         else:
-            self._start_next_side()
+            self._side_done()
         return self._leave_towards(self.remaining[0])
 
     # ---- going home ----------------------------------------------------------------
