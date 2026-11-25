@@ -15,7 +15,7 @@ from state_machine import (
 )
 
 
-WAIT_FOR_GREEN_SIGNAL = False
+WAIT_FOR_GREEN_SIGNAL = True
 
 ALTERNATE_DEPOT = {
     "left_depot_2_end": "left_depot_1_end",
@@ -23,8 +23,6 @@ ALTERNATE_DEPOT = {
 }
 
 RACKS = (
-    ("left", tuple(range(1, 7))),
-    ("right", tuple(range(1, 7))),
     ("upper_left", tuple(range(1, UPPER_CROSSINGS + 2))),
     ("upper_right", tuple(range(1, UPPER_CROSSINGS + 2))),
 )
@@ -159,9 +157,9 @@ def ramp_pickup_transition(agv, mission):
     # Accept any detected junction pattern; the route map supplies the logical sides.
     mission.on_junction(expected_sides(junction, mission.heading))
 
-    print("ramp: turning 45 degrees", turn_direction)
+    print("ramp: turning about 30 degrees", turn_direction)
     agv.turn(turn_direction, TURN_SPEED)
-    agv.interruptible_sleep(int(TURN_TIME * 500))
+    agv.interruptible_sleep(int(TURN_TIME * 1000 / 5))
     agv.stop()
 
     print("ramp: reacquiring line with middle sensors")
@@ -197,3 +195,4 @@ def run(agv, mission):
         wait_for_green_signal=WAIT_FOR_GREEN_SIGNAL,
         ramp_pickup_transition=ramp_pickup_transition,
     )
+
