@@ -7,7 +7,7 @@ TURN_SPEED = 80
 CORRECTION_DIFF = 30   # steering strength when line following; must stay below the driving speed
 LEFT_SPEED_MULTIPLIER = 1   # left wheel is weaker: every left wheel speed is multiplied by this
 
-TURN_TIME = 53 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
+TURN_TIME = 60 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)
 
 APPROACH_SPEED = 50
 APPROACH_TIME = 1
@@ -29,7 +29,7 @@ TURN_ALIGN_SETTLE_MS = 0    # keep turning after the middle sensors confirm the 
 START_FOLLOW_MS = 2000
 
 # Turning around at the end of a branch, instead of reversing out (see docs/turnaround_test.md)
-TURN_AROUND_BACK_MS = 50000 / FORWARD_SPEED            # pickups only: back up (line following) this long first
+TURN_AROUND_BACK_MS = 30000 / FORWARD_SPEED            # pickups only: back up (line following) this long first
 TURN_AROUND_SPEED = TURN_SPEED * 2   # spin at double speed
 TURN_AROUND_BLIND_TIME = TURN_TIME * 4 / 2   # blind part of the spin, halved for the double speed
 TURN_AROUND_TIMEOUT_MS = 30000       # keep spinning to search for the line this long before giving up
@@ -68,7 +68,7 @@ AMBER_FLASH_MS = 500        # half a flash cycle: 500 ms on, 500 ms off = 1 flas
 # Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
 # agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
 HEIGHT_DOWN_ANGLE = 130         # height servo: gripper lowered to box level
-HEIGHT_UP_ANGLE = 125          # height servo: carrying. Rule: the box can't be lifted more than 20 mm
+HEIGHT_UP_ANGLE = 110          # height servo: carrying, 20 degrees above HEIGHT_DOWN_ANGLE. Rule: the box can't be lifted more than 30 mm
 GRIPPER_OPEN_ANGLE = 120        # gripper servo: jaws open, wide enough to go round the box
 GRIPPER_CLOSED_ANGLE = 190     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time

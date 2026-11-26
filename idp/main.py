@@ -8,6 +8,7 @@ from agv import AGV
 # from competition_1 import CompetitionMission, run
 # from grab_test import AFTER_DROP, SCAN_PLAN, GrabMission, run
 from first_comp import FirstCompMission, run
+# from upper_test import UpperMission, run     # upper racks only (testing)
 from utime import sleep, sleep_ms
 
 
@@ -29,6 +30,7 @@ def main():
         # mission = CompetitionMission()
         # mission = GrabMission(SCAN_PLAN, after_drop=AFTER_DROP)
         mission = FirstCompMission()
+        # mission = UpperMission()     # upper racks only (testing)
 
         agv.mission_running = True   # run() starts the amber flashing
 
