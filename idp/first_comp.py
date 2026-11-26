@@ -10,7 +10,8 @@ during this run, assuming the depots start empty. For each pole, use depot 2 fir
 """
 
 from constants import (
-    BACKWARD_SPEED, FORWARD_SPEED, TURN_ALIGN_SETTLE_MS, TURN_AROUND_BACK_MS, TURN_SPEED,
+    BACKWARD_SPEED, CONFIRM_READS, FORWARD_SPEED, TURN_ALIGN_SETTLE_MS,
+    TURN_AROUND_BACK_MS, TURN_SPEED,
 )
 from state_machine import (
     DEPOT_FOR, FALLBACK_DEPOT, Mission, MissionError, UPPER_CROSSINGS, expected_sides,
@@ -55,6 +56,26 @@ def ramp_transition_plan(current_pickup, next_pickup):
             if next_pickup == pickup_node(side, number + 1):
                 return side, number, turn
     return None
+
+
+def drive_to_upper_junction(agv):
+    """Follow the upper spine until any supported crossing pattern is confirmed."""
+    from line_following_test import check_timeout
+    from utime import sleep_ms, ticks_ms
+
+    junction_patterns = ([1, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1])
+    count = 0
+    start = ticks_ms()
+    while count < CONFIRM_READS:
+        agv.check_stop_button()
+        readings = agv.read_line_sensor()
+        if readings in junction_patterns:
+            count += 1
+        else:
+            count = 0
+            agv.follow_line(FORWARD_SPEED)
+        check_timeout(agv, start, "an upper junction")
+        sleep_ms(10)
 
 
 class FirstCompMission(Mission):
@@ -178,8 +199,8 @@ def ramp_pickup_transition(agv, mission):
 
     print("ramp: driving forward to", next_junction)
     agv.forward(FORWARD_SPEED)
-    seen = drive_to_junction(agv, lambda: agv.follow_line(FORWARD_SPEED))
-    action = mission.on_junction(recheck(agv, mission, seen))
+    drive_to_upper_junction(agv)
+    action = mission.on_junction(expected_sides(next_junction, mission.heading))
     if action not in ("left", "right"):
         raise RuntimeError("expected a turn into the next pickup, got " + action)
     turn_at_junction(

@@ -112,16 +112,25 @@ class GrabMission(Mission):
 
 
 # ---- sensing ----------------------------------------------------------------------
-def follow_branch(agv):
+def follow_branch(agv, skip_initial_junction=False):
     """Follow the branch to the end of the line (no line, or a bar across all four
     sensors, on CONFIRM_READS reads in a row), watching for a box on the way.
     A box counts once the distance is below BOX_DETECT_MM on BOX_CONFIRM_READS reads in
     a row; the robot keeps going to the end either way, so every branch finishes in the
-    same place. Returns (found, mm): mm is the reading that confirmed the box, or None."""
+    same place. After a ramp transition, skip the junction bar before checking for the
+    branch end. Returns (found, mm): mm is the reading that confirmed the box, or None."""
     end_count = 0
     box_count = 0
     found_mm = None
     start = ticks_ms()
+    if skip_initial_junction:
+        agv.forward(FORWARD_SPEED)
+        while all(agv.read_line_sensor()):
+            agv.check_stop_button()
+            agv.follow_line(FORWARD_SPEED)
+            check_timeout(agv, start, "the start of the upper pickup branch")
+            sleep_ms(10)
+
     while True:
         agv.check_stop_button()
         if found_mm is None:   # stop reading once found: the rest drives like follow_to_end
@@ -307,6 +316,7 @@ def _drive(agv, mission, wait_for_green_signal=True, ramp_pickup_transition=None
     out_of_pickup = False        # True right after turning around at a pickup branch
     looking_for_depot = False
     ramp_pickup_ready = False
+    ramp_branch_start = False
 
     while True:
         agv.check_stop_button()
@@ -358,7 +368,11 @@ def _drive(agv, mission, wait_for_green_signal=True, ramp_pickup_transition=None
 
         if mission.expecting_line_end():
             if mission.state == "TO_PICKUP":
-                found, mm = follow_branch(agv)
+                found, mm = follow_branch(
+                    agv,
+                    skip_initial_junction=ramp_branch_start,
+                )
+                ramp_branch_start = False
                 mission.on_line_end()
                 print("[%s] %s: %s" % (mission.state, mission.here,
                                        "box at %d mm" % mm if found else "empty"))
@@ -373,6 +387,7 @@ def _drive(agv, mission, wait_for_green_signal=True, ramp_pickup_transition=None
                     transitioned = ramp_pickup_transition(agv, mission)
                 if transitioned:
                     ramp_pickup_ready = True
+                    ramp_branch_start = True
                     out_of_pickup = False
                 else:
                     print("[%s] at %s -> turn around" % (mission.state, mission.here))
