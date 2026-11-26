@@ -4,7 +4,7 @@
 FORWARD_SPEED = 80
 BACKWARD_SPEED = FORWARD_SPEED
 TURN_SPEED = 80
-CORRECTION_DIFF = 70
+CORRECTION_DIFF = 30   # steering strength when line following; must stay below the driving speed
 LEFT_SPEED_MULTIPLIER = 1   # left wheel is weaker: every left wheel speed is multiplied by this
 
 TURN_TIME = 53 / TURN_SPEED   # blind part of a junction turn (gets the sensors off the old line)

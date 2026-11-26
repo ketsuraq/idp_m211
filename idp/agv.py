@@ -32,15 +32,15 @@ class AGV:
             self.hw.motor2.Reverse(speed)
 
     def correct(self, direction, speed=FORWARD_SPEED, correction = CORRECTION_DIFF):
-        # goes to the left
+        # goes to the left: slow the left wheel (speeding up the other would hit the 100 cap)
         if direction == "left":
-            self.hw.motor1.Forward(speed)
-            self.hw.motor2.Forward(speed+correction)
-
-        # goes to the right
-        elif direction == "right":
-            self.hw.motor1.Forward(speed+correction)
+            self.hw.motor1.Forward(speed - correction)
             self.hw.motor2.Forward(speed)
+
+        # goes to the right: slow the right wheel
+        elif direction == "right":
+            self.hw.motor1.Forward(speed)
+            self.hw.motor2.Forward(speed - correction)
 
     def backward(self, speed=BACKWARD_SPEED):
         """Drive both motors backwards at ``speed`` percent."""
