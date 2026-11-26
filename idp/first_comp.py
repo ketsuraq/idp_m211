@@ -3,8 +3,9 @@
 Scan racks in order: lower left, lower right, upper left, upper right. Scan branches
 in ascending order within each rack. After the first successful delivery from a rack,
 skip its remaining branches and move to the next rack. A box with an unreadable pole is
-left in place, following Grab Test's default policy. The IR green wait is disabled for
-this test; only run it when the ramp is clear. Depot occupancy is tracked from drops made
+left in place, following Grab Test's default policy. The robot waits for the IR green
+signal before going up the ramp (WAIT_FOR_GREEN_SIGNAL). It goes home when nothing is left
+to scan, or after HOME_AT_S (delivering any box it is carrying first). Depot occupancy is tracked from drops made
 during this run, assuming the depots start empty. For each pole, use depot 2 first, depot
 1 second, and depot 2 again if both have already been used.
 """
@@ -19,9 +20,13 @@ from state_machine import (
 
 
 WAIT_FOR_GREEN_SIGNAL = True
-RAMP_BACKOUT_MS = 1200
-RAMP_REVERSE_TURN_MS = 1400
+# Timed moves between upper branches. Tune on the robot, and again if the speeds change.
+RAMP_BACKOUT_MS = 1050          # reverse from the branch end until the axle is on the junction
+RAMP_REVERSE_TURN_MS = 1050     # 90 degree pivot to face up the rack
 RAMP_TURN_OVERSHOOT_MS = 50
+# Seconds after the start to stop scanning and head home (the run is 300 s). Only checked
+# at the end of a branch and after a drop, so leave enough margin to get back.
+HOME_AT_S = 240
 
 ALTERNATE_DEPOT = {
     "left_depot_2_end": "left_depot_1_end",
@@ -58,18 +63,20 @@ def ramp_transition_plan(current_pickup, next_pickup):
     return None
 
 
+UPPER_JUNCTION_PATTERNS = ([1, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1])
+
+
 def drive_to_upper_junction(agv):
     """Follow the upper spine until any supported crossing pattern is confirmed."""
     from line_following_test import check_timeout
     from utime import sleep_ms, ticks_ms
 
-    junction_patterns = ([1, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1])
     count = 0
     start = ticks_ms()
     while count < CONFIRM_READS:
         agv.check_stop_button()
         readings = agv.read_line_sensor()
-        if readings in junction_patterns:
+        if readings in UPPER_JUNCTION_PATTERNS:
             count += 1
         else:
             count = 0
@@ -81,7 +88,13 @@ def drive_to_upper_junction(agv):
 class FirstCompMission(Mission):
     """Visit each rack in order, delivering at most one box from each rack."""
 
-    def __init__(self):
+    def __init__(self, clock=None):
+        """clock() returns seconds since the start; by default it starts counting now."""
+        if clock is None:
+            from time import time
+            started = time()
+            clock = lambda: time() - started
+        self.clock = clock
         pickups = []
         self._rack_by_pickup = {}
         for rack_index, (side, numbers) in enumerate(RACKS):
@@ -114,11 +127,8 @@ class FirstCompMission(Mission):
                 else:
                     self._delivering_to = first_depot
                 self._go_to(self._delivering_to, "TO_DEPOT")
-            elif self.pickups:
-                self._go_to(self.pickups[0], "TO_PICKUP")
             else:
-                self.state = "DONE"
-                return "stop"
+                self._next_pickup_or_home()
 
         elif self.state == "TO_DEPOT":
             if self._delivering_from_rack is None:
@@ -139,12 +149,19 @@ class FirstCompMission(Mission):
                 if self._rack_by_pickup[node] != rack_index
             ]
 
-            if self.pickups:
-                self._go_to(self.pickups[0], "TO_PICKUP")
-            else:
-                self._go_to("start", "TO_HOME")
+            self._next_pickup_or_home()
 
         return self._leave_towards(self.remaining[0])
+
+    def _next_pickup_or_home(self):
+        """Head for the next branch, or home if none are left or time is up."""
+        if self.clock() >= HOME_AT_S:
+            print("time's up: going home")
+            self.pickups = []
+        if self.pickups:
+            self._go_to(self.pickups[0], "TO_PICKUP")
+        else:
+            self._go_to("start", "TO_HOME")
 
 
 def ramp_pickup_transition(agv, mission):
@@ -166,7 +183,7 @@ def ramp_pickup_transition(agv, mission):
     ):
         return False
 
-    from line_following_test import drive_to_junction, recheck, turn_at_junction
+    from line_following_test import pass_junction, turn_at_junction
     from utime import sleep_ms, ticks_diff, ticks_ms
 
     def reverse_follow_for(milliseconds):
@@ -177,6 +194,25 @@ def ramp_pickup_transition(agv, mission):
             agv.reverse_follow_line(BACKWARD_SPEED)
             sleep_ms(10)
         agv.stop()
+
+    def reverse_until_junction(milliseconds):
+        """Reverse for up to milliseconds, stopping early if a junction is confirmed.
+        Returns True if it was."""
+        agv.backward(BACKWARD_SPEED)
+        start = ticks_ms()
+        count = 0
+        found = False
+        while not found and ticks_diff(ticks_ms(), start) < milliseconds:
+            agv.check_stop_button()
+            if agv.read_line_sensor() in UPPER_JUNCTION_PATTERNS:
+                count += 1
+                found = count >= CONFIRM_READS
+            else:
+                count = 0
+                agv.reverse_follow_line(BACKWARD_SPEED)
+            sleep_ms(10)
+        agv.stop()
+        return found
 
     print("ramp: reverse-following for", RAMP_BACKOUT_MS, "ms")
     reverse_follow_for(RAMP_BACKOUT_MS)
@@ -194,8 +230,12 @@ def ramp_pickup_transition(agv, mission):
         sleep_ms(10)
     agv.stop()
 
-    print("ramp: reversing for", TURN_AROUND_BACK_MS, "ms")
-    reverse_follow_for(int(TURN_AROUND_BACK_MS))
+    # Back up to line up with the spine, but never past the junction just left: going
+    # forwards it would be counted as the next one.
+    print("ramp: reversing for up to", TURN_AROUND_BACK_MS, "ms")
+    if reverse_until_junction(int(TURN_AROUND_BACK_MS)):
+        print("ramp: backed onto", junction, "- driving past it")
+        pass_junction(agv)
 
     print("ramp: driving forward to", next_junction)
     agv.forward(FORWARD_SPEED)

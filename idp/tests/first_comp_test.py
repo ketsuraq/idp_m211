@@ -4,7 +4,9 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-from first_comp import FirstCompMission, pickup_node, ramp_transition_plan
+from first_comp import (
+    HOME_AT_S, FirstCompMission, pickup_node, ramp_transition_plan,
+)
 from state_machine import expected_sides
 
 
@@ -75,5 +77,36 @@ mission = FirstCompMission()
 assert arrive_at_branch_end(mission) == pickup_node("left", 1)
 finish_pickup(mission, box_found=False)
 assert mission.pickups[0] == pickup_node("left", 2)
+
+# Nothing taken on the last rack: go home instead of stopping upstairs.
+mission = FirstCompMission(clock=lambda: 0)
+mission.pickups = [pickup_node("upper_right", 7)]
+mission.here = "upper_7"
+mission.heading = "E"
+mission._go_to(mission.pickups[0], "TO_PICKUP")
+mission.remaining = [pickup_node("upper_right", 7)]
+assert finish_pickup(mission) == "reverse"
+assert mission.state == "TO_HOME"
+assert mission.remaining[-1] == "start"
+
+# Time up at an empty branch: go home.
+now = [0]
+mission = FirstCompMission(clock=lambda: now[0])
+arrive_at_branch_end(mission)
+now[0] = HOME_AT_S
+finish_pickup(mission)
+assert mission.state == "TO_HOME"
+assert mission.pickups == []
+
+# Time up while picking up a box: deliver it first, then go home.
+now = [0]
+mission = FirstCompMission(clock=lambda: now[0])
+arrive_at_branch_end(mission)
+now[0] = HOME_AT_S
+finish_pickup(mission, box_found=True, polarity="N")
+assert mission.state == "TO_DEPOT"
+finish_depot(mission)
+assert mission.delivered == 1
+assert mission.state == "TO_HOME"
 
 print("FirstCompMission checks passed")
