@@ -9,13 +9,18 @@ during this run, assuming the depots start empty. For each pole, use depot 2 fir
 1 second, and depot 2 again if both have already been used.
 """
 
-from constants import BACKWARD_SPEED, CONFIRM_READS, FORWARD_SPEED, TURN_SPEED, TURN_TIME
+from constants import (
+    BACKWARD_SPEED, FORWARD_SPEED, TURN_ALIGN_SETTLE_MS, TURN_AROUND_BACK_MS, TURN_SPEED,
+)
 from state_machine import (
     DEPOT_FOR, FALLBACK_DEPOT, Mission, MissionError, UPPER_CROSSINGS, expected_sides,
 )
 
 
 WAIT_FOR_GREEN_SIGNAL = True
+RAMP_BACKOUT_MS = 1200
+RAMP_REVERSE_TURN_MS = 1400
+RAMP_TURN_OVERSHOOT_MS = 50
 
 ALTERNATE_DEPOT = {
     "left_depot_2_end": "left_depot_1_end",
@@ -23,6 +28,8 @@ ALTERNATE_DEPOT = {
 }
 
 RACKS = (
+    ("left", tuple(range(1, 7))),
+    ("right", tuple(range(1, 7))),
     ("upper_left", tuple(range(1, UPPER_CROSSINGS + 2))),
     ("upper_right", tuple(range(1, UPPER_CROSSINGS + 2))),
 )
@@ -138,50 +145,48 @@ def ramp_pickup_transition(agv, mission):
     ):
         return False
 
-    from utime import sleep_ms
+    from line_following_test import drive_to_junction, recheck, turn_at_junction
+    from utime import sleep_ms, ticks_diff, ticks_ms
 
-    print("ramp: reverse-following to", junction)
-    agv.backward(BACKWARD_SPEED)
-    junction_count = 0
-    while junction_count < CONFIRM_READS:
-        agv.check_stop_button()
-        readings = agv.read_line_sensor()
-        if readings[0] or readings[3] or readings == [1, 1, 1, 1]:
-            junction_count += 1
-        else:
-            junction_count = 0
+    def reverse_follow_for(milliseconds):
+        agv.backward(BACKWARD_SPEED)
+        start = ticks_ms()
+        while ticks_diff(ticks_ms(), start) < milliseconds:
+            agv.check_stop_button()
             agv.reverse_follow_line(BACKWARD_SPEED)
+            sleep_ms(10)
+        agv.stop()
+
+    print("ramp: reverse-following for", RAMP_BACKOUT_MS, "ms")
+    reverse_follow_for(RAMP_BACKOUT_MS)
+
+    # The timed backout assumes the robot has reached this spine junction.
+    action = mission.on_junction(expected_sides(junction, mission.heading))
+    if action != turn_direction:
+        raise RuntimeError("unexpected turn at upper rack junction: " + action)
+
+    print("ramp: pivoting", action, "for", RAMP_REVERSE_TURN_MS, "ms")
+    start = ticks_ms()
+    while ticks_diff(ticks_ms(), start) < RAMP_REVERSE_TURN_MS:
+        agv.check_stop_button()
+        agv.turn(action, TURN_SPEED)
         sleep_ms(10)
     agv.stop()
 
-    # Accept any detected junction pattern; the route map supplies the logical sides.
-    mission.on_junction(expected_sides(junction, mission.heading))
+    print("ramp: reversing for", TURN_AROUND_BACK_MS, "ms")
+    reverse_follow_for(int(TURN_AROUND_BACK_MS))
 
-    print("ramp: turning about 30 degrees", turn_direction)
-    agv.turn(turn_direction, TURN_SPEED)
-    agv.interruptible_sleep(int(TURN_TIME * 1000 / 5))
-    agv.stop()
-
-    print("ramp: reacquiring line with middle sensors")
+    print("ramp: driving forward to", next_junction)
     agv.forward(FORWARD_SPEED)
-    while agv.centred_on_line():
-        agv.check_stop_button()
-        agv.forward(FORWARD_SPEED)
-        sleep_ms(10)
-
-    centred_count = 0
-    while centred_count < CONFIRM_READS:
-        agv.check_stop_button()
-        if agv.centred_on_line():
-            centred_count += 1
-        else:
-            centred_count = 0
-            agv.forward(FORWARD_SPEED)
-        sleep_ms(10)
-    agv.stop()
-
-    # The diagonal enters the next pickup branch without traversing its spine junction.
-    mission.on_junction(expected_sides(next_junction, mission.heading))
+    seen = drive_to_junction(agv, lambda: agv.follow_line(FORWARD_SPEED))
+    action = mission.on_junction(recheck(agv, mission, seen))
+    if action not in ("left", "right"):
+        raise RuntimeError("expected a turn into the next pickup, got " + action)
+    turn_at_junction(
+        agv,
+        action,
+        settle_ms=TURN_ALIGN_SETTLE_MS + RAMP_TURN_OVERSHOOT_MS,
+    )
     return True
 
 

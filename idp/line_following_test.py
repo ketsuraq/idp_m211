@@ -35,7 +35,7 @@ def sides(readings):
     return None
     
 
-def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
+def turn_at_junction(agv, direction, latency=CORNER_LATENCY, settle_ms=TURN_ALIGN_SETTLE_MS):
     """Drive forward so the wheels reach the junction, then pivot onto the new line."""
     # 1. Walk forward (line following) to put the wheel axle over the junction.
     # Where there's no line ahead, follow_line keeps the last command, so start going straight.
@@ -68,8 +68,8 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY):
             raise RuntimeError("Turn timed out without finding the line")
         sleep_ms(10)
 
-    # 4. Keep doing the turn for 100 ms after confirmation, then stop
-    agv.interruptible_sleep(TURN_ALIGN_SETTLE_MS)
+    # 4. Keep turning briefly after confirmation, then stop
+    agv.interruptible_sleep(settle_ms)
     agv.stop()
 
 def back_off_line(agv):
