@@ -23,7 +23,7 @@ CONFIRM_READS = 3            # a junction must show on this many reads in a row
 RECHECK_MS = 400             # junction not as expected: keep going this long, re-reading
 LEG_TIMEOUT_MS = 20000       # nothing found for this long = lost
 TURN_TIMEOUT_MS = 6000       # a junction turn that never finds the new line
-TURN_ALIGN_SETTLE_MS = 100    # keep turning after the middle sensors confirm the new line
+TURN_ALIGN_SETTLE_MS = 0    # keep turning after the middle sensors confirm the new line
 
 # Start box: line follow this long before looking for junctions (gets past the box edge)
 START_FOLLOW_MS = 2000
@@ -72,5 +72,6 @@ HEIGHT_UP_ANGLE = 125          # height servo: carrying. Rule: the box can't be 
 GRIPPER_OPEN_ANGLE = 120        # gripper servo: jaws open, wide enough to go round the box
 GRIPPER_CLOSED_ANGLE = 190     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time
+
 
 
