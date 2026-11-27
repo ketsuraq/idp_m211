@@ -84,6 +84,8 @@ ALTERNATE_DEPOT = {
     # ("right", tuple(range(1, 7))),
 
 RACKS = (
+    ("left", tuple(range(1, 7))),
+    ("right", tuple(range(1, 7))),
     ("upper_left", tuple(range(1, UPPER_CROSSINGS + 1))),
     ("upper_right", tuple(range(1, UPPER_CROSSINGS + 1))),
 )

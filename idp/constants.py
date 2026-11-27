@@ -51,12 +51,12 @@ BOX_DETECT_MM = 100
 
 # Hall sensor (DRV5055A2) for the box's magnet polarity
 HALL_ZERO_READS = 50        # readings taken at startup (no magnet) to find the zero voltage (median)
-HALL_THRESHOLD_V = 0.1      # change from zero that counts as a pole. Noise is ~±0.03 V; lower = picks up
+HALL_THRESHOLD_V = 0.05      # change from zero that counts as a pole. Noise is ~±0.03 V; lower = picks up
                             # weaker magnets but risks noise, higher = misses weak ones (one pole was
                             # measured at only 0.15 V from zero, which this would miss)
 HALL_CONFIRM_READS = 5      # same pole this many readings in a row before trusting it
 HALL_READ_MS = 10           # time between readings
-HALL_TIMEOUT_MS = 2000      # give up (no pole) after this long
+HALL_TIMEOUT_MS = 1000      # give up (no pole) after this long
 
 
 # IR receiver (traffic light). Green is a series of lows of about 74-85 ms (measured).
@@ -72,10 +72,11 @@ AMBER_FLASH_MS = 500        # half a flash cycle: 500 ms on, 500 ms off = 1 flas
 # Servos (angles 0-270). PLACEHOLDERS: find the real angles by calling
 # agv.hw.height_servo.set_angle(...) / agv.hw.gripper_servo.set_angle(...) from the REPL.
 HEIGHT_DOWN_ANGLE = 150         # height servo: gripper lowered to box level
-HEIGHT_UP_ANGLE = 110          # height servo: carrying, 20 degrees above HEIGHT_DOWN_ANGLE. Rule: the box can't be lifted more than 30 mm
-GRIPPER_OPEN_ANGLE = 120        # gripper servo: jaws open, wide enough to go round the box
+HEIGHT_UP_ANGLE = 130          # height servo: carrying, 20 degrees above HEIGHT_DOWN_ANGLE. Rule: the box can't be lifted more than 30 mm
+GRIPPER_OPEN_ANGLE = 110        # gripper servo: jaws open, wide enough to go round the box
 GRIPPER_CLOSED_ANGLE = 190     # gripper servo: holding the box. Too far may strain the servo or crush the box
 SERVO_MOVE_MS = 500           # wait after each servo command so it reaches the angle before the next step. Too short = next move starts early; too long = wastes time
+
 
 
 
