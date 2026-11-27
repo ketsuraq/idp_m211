@@ -1,0 +1,88 @@
+[33mbc28e1b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Upper racks: retune ramp timings, don't recount rows, go home when done or late
+[33med8bf27[m Line following: slow the inner wheel when correcting, CORRECTION_DIFF 30
+[33m080685b[m last fix from me of the day
+[33maa5c9b5[m ramp func + constants
+[33m6a3d02c[m ???
+[33m1bffcaa[m working ir, ramp close to being implemented
+[33m63e926c[m main with first comp integration
+[33m3ade931[m working bottom pick ups and deposits, needs ramp testing
+[33m19ba458[m grab test works with new assembly
+[33m78788b9[m Competition tests, just ramp and just sides
+[33m4c0b061[m box turn changes
+[33mbaeb781[m Add competition_1.py and run it from main.py
+[33m69c0d03[m Grab test: leave boxes whose pole can't be read (NO_POLE_ACTION = "skip")
+[33mb5e9919[m LEDs: amber flashes for the whole mission, built on zj's flashing code
+[33m9438955[m Wait for green before going up the ramp; upper pickups in the grab test
+[33mda5c34b[m Map the ramp and upper deck
+[33me8a13fe[m Box turn: shorter blind spin, no blind forward; correct() takes a correction amount
+[33m605968e[m Amber flashing, red/green polarity LEDs, tidy led_test
+[33m53ce1c8[m gripper doesnt lower after grab and back out, and hall sensor out of 3V instead of 3.3
+[33m9a83e6e[m Led class
+[33m3102634[m LED stuff
+[33m003f1bc[m Add Led class
+[33m45f6d67[m working button + distance sensor
+[33md1efd6c[m rebase failure
+[33me4d5ded[m grab test coode all
+[33m508215c[m Merge branch 'main' of https://github.com/ketsuraq/idp_m211
+[33md7389dd[m grabber tests + line sensor nice printing
+[33m76c490a[m button code (arbitrary)
+[33mcbce45b[m IR additions
+[33md768675[m Merge branch 'main' of https://github.com/ketsuraq/idp_m211
+[33m723618a[m fixed start mashallah
+[33m3ee3760[m ir wait for green test
+[33md02105d[m hall sensor implementation on robot
+[33m67350a7[m hall sensor test + fixes to distance sensor
+[33m630c1ad[m minor fixes
+[33m93da25d[m potential start box fix
+[33mca6d0f7[m Distance sensor initilization, with grab test working in that respect
+[33mca2f27f[m new constants for new chasis
+[33md0dd24a[m changes that didnt work
+[33mda4a7c1[m gitignore
+[33m65621ff[m Merge remote-tracking branch 'refs/remotes/origin/main'
+[33m942620e[m IR sensor initialization and test
+[33m66269d8[m small changes for consistency v1.0
+[33me32a595[m fixes for depot turn around, and edge case when outer sensor meets branch when returning, it now backs up until there is no longer a line and continues
+[33m69fa91b[m Merge branch 'main' of https://github.com/ketsuraq/idp_m211
+[33mda6ffa5[m constants fix v1.0
+[33ma1ec276[m sensor commit please work
+[33m1308966[m Add new sensor files
+[33m921ceff[m Initial commit of VL53L0 sensor
+[33mab4b946[m distance sensor test
+[33mae372a8[m fixes from testing day
+[33m022a553[m checking all pickup stations
+[33mfe02064[m working bottom pickups
+[33m346ec14[m Main line following test done, more details in docs/turnaround_test.md
+[33mb494e5a[m fix start
+[33me96c2be[m State machine + line following test code. Also has document describing how its achieved
+[33mb0042c2[m corner fix
+[33m0088148[m Junction turning test with line following
+[33ma7c4d7c[m working line following
+[33mec63bd1[m correction test
+[33md603c05[m fixes
+[33m46653a0[m fixes + continuous turn function
+[33me695935[m hw init issue
+[33md00f124[m line following program
+[33m2cfd3ed[m Merge branch 'main' of https://github.com/ketsuraq/idp_m211
+[33m324cc91[m working movement
+[33ma714124[m stated vairable types for parameters in functions
+[33m334a6d1[m missed files form last run
+[33m7e42326[m Merge branch 'main' of https://github.com/ketsuraq/idp_m211
+[33m2c49806[m movement controls
+[33mb1c7567[m Docstrings, identifiers for line sensors, returning values based on identifiers, state machine design and implementation
+[33md135ea0[m mistake.
+[33m3e84c08[m main sample
+[33mb0247e9[m Line sensors class. Initialised line sensors
+[33m1f1fcc3[m drive methods
+[33maee037c[m line detection object
+[33mb130c26[m line detection script working
+[33m2481d59[m hw class and motor test
+[33m2d75c81[m tests
+[33mc129ad6[m useful blink test and minor changes
+[33m263294c[m example code
+[33m08efadf[m pseudocode game logic, task management
+[33m3f4047b[m init workflow files
+[33mc7b9484[m update .gitignore
+[33m5d9cc53[m restructure codebase
+[33m4aa3f3b[m init commit
+[33m9d95f75[m project details and requirements
+[33m668d023[m Initial commit
