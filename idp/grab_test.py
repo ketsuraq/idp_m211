@@ -191,10 +191,9 @@ def collect(agv, station):
 
 
 def drop(agv):
-    """At the end of the depot line: open the gripper to let go of the box, then raise the
-    arm (it stays raised whenever there's no box). The robot then reverses out
-    (reverse_out_of_depot), leaving the box behind."""
-    print("DROP: opening gripper")
+    """At the depot: lower the mechanism, release the box, then raise it."""
+    print("DROP: lowering mechanism")
+    agv.lower()
     agv.open_gripper()
     agv.show_polarity(None)   # box released: red/green off
     print("DROP: raising arm")
