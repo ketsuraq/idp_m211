@@ -1,22 +1,21 @@
 """First competition mission using Grab Test's driving and pickup routines.
 
-Scan racks in order: lower left, lower right, upper left, upper right. Scan branches
-in ascending order within each rack. After the first successful delivery from a rack,
-skip its remaining branches and move to the next rack. A box with an unreadable pole is
-left in place, following Grab Test's default policy. The robot waits for the IR green
-signal before going up the ramp (WAIT_FOR_GREEN_SIGNAL). It goes home when nothing is left
-to scan, or after HOME_AT_S (delivering any box it is carrying first). Depot occupancy is
-tracked from drops made during this run, assuming the depots start empty. For each pole,
-use depot 2 first, depot 1 second, and depot 2 again if both have already been used.
+Scan upper left, then upper right, branches 1-6 in order. After the first successful
+delivery from a rack, skip its remaining branches and move to the next rack. A box with
+an unreadable pole is left in place, following Grab Test's default policy. The robot
+waits for the IR green signal before going up the ramp (WAIT_FOR_GREEN_SIGNAL). It goes
+home when nothing is left to scan, or after HOME_AT_S (delivering any box it is carrying
+first). Depot occupancy is tracked from drops made during this run, assuming the depots
+start empty. For each pole, use depot 2 first, depot 1 second, and depot 2 again if both
+have already been used.
 
 Lower floor: grab_test's driving, unchanged.
 
 Upper deck (tuned with upper_test.py, which now just runs this file without the lower
 racks). run() swaps these in for grab_test's own moves, only on the upper racks:
-  - ramp_pickup_transition: from an EMPTY lane straight to the next lane of the same rack
-    (reverse out, pivot 90, reverse, drive to the next lane, turn in), no 180.
-  - upper_turn_around / upper_back_out: the 180 at the end of a lane (after a grab, or at
-    the last lane of a rack), spinning away from the wall.
+  - Empty lanes keep the timed ramp_pickup_transition to the next lane on the same rack.
+  - upper_turn_around / upper_back_out: after a pickup, branches 1-3 spin right and
+    branches 4-6 spin left. Empty-lane fallback turnarounds use the rack's prior direction.
   - upper_spine_turn: turning out of a lane onto the spine, heading down to the ramp, with
     its own blind time. skip_lane_passed_in_turn then counts the lane the turn carried the
     sensors past.
@@ -27,8 +26,9 @@ All the timed moves on the upper deck are in UPPER_SIDE, separately for each rac
 """
 
 from constants import (
-    BACKWARD_SPEED, CONFIRM_READS, CORNER_LATENCY, FORWARD_SPEED, TURN_ALIGN_SETTLE_MS,
-    TURN_AROUND_SPEED, TURN_AROUND_TIMEOUT_MS, TURN_SPEED, TURN_TIMEOUT_MS,
+    BACKWARD_SPEED, CARRYING_RIGHT_PRETURN_MS, CARRYING_RIGHT_TURN_BLIND_MS,
+    CONFIRM_READS, CORNER_LATENCY, FORWARD_SPEED, TURN_ALIGN_SETTLE_MS, TURN_AROUND_SPEED,
+    TURN_AROUND_TIMEOUT_MS, TURN_SPEED, TURN_TIMEOUT_MS,
 )
 from state_machine import (
     DEPOT_FOR, FALLBACK_DEPOT, Mission, MissionError, UPPER_CROSSINGS, expected_sides,
@@ -46,28 +46,29 @@ HOME_AT_S = 240
 UPPER_SIDE = {
     "upper_left": {
         # moving on from an EMPTY lane to the next lane of the same rack
-        "backout_ms": 1050,           # reverse out of the lane until the axle is on the spine
+        "backout_ms": 1300,           # reverse out of the lane until the axle is on the spine
         "pivot_ms": 900,              # 90 degree pivot to face up the spine (pivots right)
-        "after_pivot_back_ms": 700,   # reverse after the pivot, before driving to the next lane
+        "after_pivot_back_ms": 650,   # reverse after the pivot, before driving to the next lane
         "turn_in_overshoot_ms": 50,   # keep turning this long after finding the next lane
         # the 180 at the end of a lane (after a grab, or at the last lane of the rack)
         "turn_around_back_ms": 500,   # back up before the spin
-        "turn_around_blind_ms": 1126, # blind part of the spin: RAISE if it stops on another line
-        "turn_around_direction": "right",   # spin away from the wall
+        "turn_around_blind_ms": 1100, # blind part of the spin: RAISE if it stops on another line
+        "turn_around_direction": "right",   # prior direction for empty-lane fallback
         # turning out of a lane onto the spine, heading down to the ramp (turns right)
         "spine_turn_blind_ms": 662,   # blind part of the turn (was the shared TURN_TIME)
     },
     "upper_right": {
-        "backout_ms": 1050,
-        "pivot_ms": 1300,             # pivots left
+        "backout_ms": 1300,
+        "pivot_ms": 1100,             # pivots left
         "after_pivot_back_ms": 500,
         "turn_in_overshoot_ms": 50,
         "turn_around_back_ms": 500,
-        "turn_around_blind_ms": 1126,
+        "turn_around_blind_ms": 1100,
         "turn_around_direction": "left",
         "spine_turn_blind_ms": 862,   # turns left onto the spine
     },
 }
+
 
 # A lane on the spine counts once an outer sensor sees a line on this many reads in a row
 # (reads are LANE_READ_MS apart). Higher risks missing a lane crossed quickly.
@@ -79,11 +80,12 @@ ALTERNATE_DEPOT = {
     "right_depot_2_end": "right_depot_1_end",
 }
 
+    # ("left", tuple(range(1, 7))),
+    # ("right", tuple(range(1, 7))),
+
 RACKS = (
-    ("left", tuple(range(1, 7))),
-    ("right", tuple(range(1, 7))),
-    ("upper_left", tuple(range(1, UPPER_CROSSINGS + 2))),
-    ("upper_right", tuple(range(1, UPPER_CROSSINGS + 2))),
+    ("upper_left", tuple(range(1, UPPER_CROSSINGS + 1))),
+    ("upper_right", tuple(range(1, UPPER_CROSSINGS + 1))),
 )
 
 
@@ -113,6 +115,26 @@ def rack_side(node):
     """"upper_left" / "upper_right" for an upper lane end like "upper_left_3_end", else None."""
     side = (node or "").rsplit("_", 2)[0]
     return side if side in UPPER_SIDE else None
+
+
+def is_depot_entry_target(node):
+    """Return whether the next route node is a depot branch end."""
+    return bool(node and "_depot_" in node and node.endswith("_end"))
+
+
+def upper_turnaround_direction(node, box_picked_up=False):
+    """Return the pickup-specific direction or prior rack direction for an empty lane."""
+    parts = (node or "").rsplit("_", 2)
+    if len(parts) != 3 or parts[0] not in UPPER_SIDE or parts[2] != "end":
+        raise MissionError("not an upper pickup branch end: " + str(node))
+    if not parts[1].isdigit():
+        raise MissionError("invalid upper pickup branch number: " + str(node))
+    branch_number = int(parts[1])
+    if branch_number < 1 or branch_number > UPPER_CROSSINGS:
+        raise MissionError("upper pickup branch out of range: " + str(node))
+    if not box_picked_up:
+        return UPPER_SIDE[parts[0]]["turn_around_direction"]
+    return "right" if branch_number <= 3 else "left"
 
 
 class FirstCompMission(Mission):
@@ -220,11 +242,20 @@ def outer_on_line(r):
     return bool(r[0] or r[3])
 
 
+def lane_sensor_on_line(r, side=None):
+    if side == "upper_left":
+        return bool(r[0])
+    if side == "upper_right":
+        return bool(r[3])
+    if side is None:
+        return outer_on_line(r)
+    raise ValueError("unknown rack side: " + str(side))
+
+
 # ---- upper deck: lane finding and reversing ---------------------------------------------
-def drive_to_lane(agv):
-    """Drive up the spine to the next lane and return when it is under the sensors.
-    1. If an outer sensor is already on a lane (the one just left), drive past it.
-    2. Then a lane counts once an outer sensor sees a line on LANE_CONFIRM_READS reads."""
+def drive_to_lane(agv, side=None):
+    """Drive up the spine to the next lane, using that rack's outer sensor when specified.
+    First clear the lane just left; then confirm the next lane under the sensors."""
     from line_following_test import check_timeout
     from utime import sleep_ms, ticks_ms
 
@@ -233,7 +264,7 @@ def drive_to_lane(agv):
     while clear < LANE_CONFIRM_READS:          # 1. clear of any lane already underneath
         agv.check_stop_button()
         r = agv.read_line_sensor()
-        clear = clear + 1 if not outer_on_line(r) else 0
+        clear = clear + 1 if not lane_sensor_on_line(r, side) else 0
         steer_forward(agv, r)
         check_timeout(agv, start, "the outer sensors to clear (upper spine)")
         sleep_ms(LANE_READ_MS)
@@ -242,7 +273,7 @@ def drive_to_lane(agv):
     while seen < LANE_CONFIRM_READS:           # 2. the next lane
         agv.check_stop_button()
         r = agv.read_line_sensor()
-        if outer_on_line(r):
+        if lane_sensor_on_line(r, side):
             seen += 1                          # keep the current motor command over the lane
         else:
             seen = 0
@@ -329,7 +360,7 @@ def ramp_pickup_transition(agv, mission):
 
     # 4. Forward to the first lane it meets (the next lane), then turn in
     print("ramp: driving forward to", next_junction)
-    drive_to_lane(agv)
+    drive_to_lane(agv, side)
     action = mission.on_junction(expected_sides(next_junction, mission.heading))
     if action not in ("left", "right"):
         raise RuntimeError("expected a turn into the next pickup, got " + action)
@@ -357,8 +388,8 @@ def upper_back_out(agv, side):
     agv.stop()
 
 
-def upper_turn_around(agv, side, back_up=True):
-    """line_following_test.turn_around with this rack's direction, back-up and blind time.
+def upper_turn_around(agv, side, direction, back_up=True):
+    """line_following_test.turn_around with this rack's back-up and blind time.
     Back up (unless already done), spin blind, then keep spinning until the middle sensors
     leave the line and find it again."""
     from utime import sleep_ms, ticks_diff, ticks_ms
@@ -373,8 +404,8 @@ def upper_turn_around(agv, side, back_up=True):
             agv.reverse_follow_line(BACKWARD_SPEED)
             sleep_ms(10)
     print("turn around (%s): spinning %s (blind %d ms)"
-          % (side, t["turn_around_direction"], t["turn_around_blind_ms"]))
-    agv.turn(t["turn_around_direction"], TURN_AROUND_SPEED)
+          % (side, direction, t["turn_around_blind_ms"]))
+    agv.turn(direction, TURN_AROUND_SPEED)
     agv.interruptible_sleep(t["turn_around_blind_ms"])
     start = ticks_ms()
     try:
@@ -466,11 +497,8 @@ def skip_lane_passed_in_turn(agv, mission):
 
 # ---- run -------------------------------------------------------------------------------
 def run(agv, mission):
-    """grab_test's driver with this file's ramp_pickup_transition and, on the upper racks
-    only: upper_turn_around / upper_back_out in place of grab_test's turn_around /
-    back_out_and_lower, upper_spine_turn for turns out of a lane onto the spine, and
-    skip_lane_passed_in_turn after every turn. The lower floor drives exactly as before.
-    grab_test's originals are put back afterwards."""
+    """grab_test's driver with upper-specific turnarounds and spine transitions.
+    Empty lanes use the timed ramp transition; pickups use branch-specific 180s."""
     import grab_test
 
     original_turn_around = grab_test.turn_around
@@ -489,6 +517,23 @@ def run(agv, mission):
         if side:   # out of an upper lane onto the spine: this rack's blind time
             upper_spine_turn(agv, direction, latency,
                              UPPER_SIDE[side]["spine_turn_blind_ms"], settle_ms)
+        elif (
+            direction == "right"
+            and mission.state == "TO_DEPOT"
+            and not (mission.here or "").startswith("upper_")
+            and not (
+                mission.remaining
+                and is_depot_entry_target(mission.remaining[0])
+            )
+        ):
+            original_turn_at_junction(
+                agv,
+                direction,
+                latency,
+                settle_ms,
+                pre_turn_ms=CARRYING_RIGHT_PRETURN_MS,
+                blind_time_ms=CARRYING_RIGHT_TURN_BLIND_MS,
+            )
         else:      # any other turn: unchanged
             original_turn_at_junction(agv, direction, latency, settle_ms)
         skip_lane_passed_in_turn(agv, mission)
@@ -496,7 +541,10 @@ def run(agv, mission):
     def turn_around(agv, back_up=True):
         side = rack_side(mission.here)
         if side:
-            upper_turn_around(agv, side, back_up)
+            direction = upper_turnaround_direction(
+                mission.here, box_picked_up=not back_up
+            )
+            upper_turn_around(agv, side, direction, back_up)
         else:
             original_turn_around(agv, back_up)       # anywhere else: unchanged
 
@@ -514,3 +562,5 @@ def run(agv, mission):
         grab_test.turn_around = original_turn_around
         grab_test.turn_at_junction = original_turn_at_junction
         grab_test.back_out_and_lower = original_back_out_and_lower
+
+

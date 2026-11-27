@@ -181,7 +181,12 @@ def collect(agv, station):
         return NO_POLE_HANDLERS[NO_POLE_ACTION](agv, station)
     print("COLLECT at", station, "pole:", pole)
     agv.show_polarity(pole)   # red = north, green = south, steady while the box is carried
+    upper_pickup = station.startswith("upper_")
+    if upper_pickup:
+        agv.lower()
     agv.close_gripper()
+    if upper_pickup:
+        agv.lift()
     return pole, True
 
 

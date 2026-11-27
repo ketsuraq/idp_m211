@@ -35,8 +35,16 @@ def sides(readings):
     return None
     
 
-def turn_at_junction(agv, direction, latency=CORNER_LATENCY, settle_ms=TURN_ALIGN_SETTLE_MS):
-    """Drive forward so the wheels reach the junction, then pivot onto the new line."""
+def turn_at_junction(
+    agv, direction, latency=CORNER_LATENCY, settle_ms=TURN_ALIGN_SETTLE_MS,
+    pre_turn_ms=0, blind_time_ms=None,
+):
+    """Approach and pivot onto the new line, with optional pre-turn and blind-time override."""
+    if pre_turn_ms > 0:
+        agv.turn(direction, TURN_SPEED)
+        agv.interruptible_sleep(pre_turn_ms)
+        agv.forward(FORWARD_SPEED)
+
     # 1. Walk forward (line following) to put the wheel axle over the junction.
     # Where there's no line ahead, follow_line keeps the last command, so start going straight.
     # latency=0 (axle already over the junction, e.g. out of a depot) skips this entirely.
@@ -50,7 +58,9 @@ def turn_at_junction(agv, direction, latency=CORNER_LATENCY, settle_ms=TURN_ALIG
 
     # 2. Blind turn to get the sensors off the old line
     agv.turn(direction, TURN_SPEED)
-    agv.interruptible_sleep(int(TURN_TIME * 1000))
+    if blind_time_ms is None:
+        blind_time_ms = int(TURN_TIME * 1000)
+    agv.interruptible_sleep(blind_time_ms)
 
     # 3. Keep turning until both middle sensors confirm the new line
     start = ticks_ms()
